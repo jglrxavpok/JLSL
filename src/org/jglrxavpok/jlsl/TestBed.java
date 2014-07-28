@@ -11,7 +11,7 @@ public class TestBed implements Opcodes
 	{
 		try
 		{
-			System.err.println(JLSL.translateToGLSL(TestShader.class));
+			System.err.println(JLSL.translateToGLSL(TestShader.class, 120));
 		}
 		catch(IOException e)
 		{

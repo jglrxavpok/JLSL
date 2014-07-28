@@ -23,4 +23,15 @@ public class Vec4
 		double dw = w;
 		return Math.sqrt(dx*dx+dy*dy+dz*dz+dw*dw);
 	}
+	
+
+	public Vec4 normalize()
+	{
+		double l = length();
+		double x1 = x/l;
+		double y1 = y/l;
+		double z1 = z/l;
+		double w1 = w/l;
+		return new Vec4(x1,y1,z1,w1);
+	}
 }

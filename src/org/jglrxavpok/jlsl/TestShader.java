@@ -16,7 +16,17 @@ public class TestShader extends FragmentShader
 	public void main()
 	{
 		Vec4 v = new Vec4(gl_FragCoord.x/screenSize.x,gl_FragCoord.y/screenSize.y,gl_FragCoord.z,gl_FragCoord.w);
+		v = normalizer(v, v.length());
 		gl_FragColor = v;
+	}
+
+	private Vec4 normalizer(Vec4 v, double l)
+	{
+		double x1 = v.x/l;
+		double y1 = v.y/l;
+		double z1 = v.z/l;
+		double w1 = v.w/l;
+		return new Vec4(x1,y1,z1,w1);
 	}
 
 }

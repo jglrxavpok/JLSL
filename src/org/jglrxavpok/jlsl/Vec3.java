@@ -13,4 +13,21 @@ public class Vec3
 		this.y = y;
 		this.z = z;
 	}
+	
+	public double length()
+	{
+		double dx = x;
+		double dy = y;
+		double dz = z;
+		return Math.sqrt(dx*dx+dy*dy+dz*dz);
+	}
+	
+	public Vec3 normalize()
+	{
+		double l = length();
+		double x1 = x/l;
+		double y1 = y/l;
+		double z1 = z/l;
+		return new Vec3(x1,y1,z1);
+	}
 }
