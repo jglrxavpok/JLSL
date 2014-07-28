@@ -1,8 +1,6 @@
 package org.jglrxavpok.jlsl;
 
-public abstract class VertexShader
+public abstract class VertexShader extends ShaderBase
 {
-	public abstract void main();
-	
 	public Vec4 gl_Position;
 }

@@ -1,8 +1,9 @@
 package org.jglrxavpok.jlsl;
 
+import org.jglrxavpok.jlsl.JLSL.Extensions;
 import org.jglrxavpok.jlsl.JLSL.Uniform;
 
-//@Extensions({"GL_ARB_explicit_uniform_location"})
+@Extensions({"GL_ARB_explicit_uniform_location"})
 public class TestShader extends FragmentShader
 {
 
