@@ -26,6 +26,9 @@ public class JLSL
 		setGLSLTranslation(Vec2.class.getCanonicalName(), "vec2");
 		setGLSLTranslation(Vec3.class.getCanonicalName(), "vec3");
 		setGLSLTranslation(Vec4.class.getCanonicalName(), "vec4");
+		setGLSLTranslation(Mat2.class.getCanonicalName(), "mat2");
+		setGLSLTranslation(Mat3.class.getCanonicalName(), "mat3");
+		setGLSLTranslation(Mat4.class.getCanonicalName(), "mat4");
 	}
 
 	public static void setGLSLTranslation(String javaType, String glslType)
@@ -557,7 +560,7 @@ public class JLSL
 		{
 			type = translateToJLSL(type);
 			if(!type.equals("int") && !type.equals("float") && !type.equals("double") && !type.equals("boolean") && !type.equals("vec2") && !type.equals("vec3")
-					&& !type.equals("vec4"))
+					&& !type.equals("vec4") && !type.equals("mat3") && !type.equals("mat2") && !type.equals("mat4"))
 			{
 				return false;
 			}
