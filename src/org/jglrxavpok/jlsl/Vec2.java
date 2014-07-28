@@ -8,6 +8,7 @@ public class Vec2
 
 	public Vec2(double x, double y)
 	{
+		super();
 		this.x = x;
 		this.y = y;
 	}
@@ -26,4 +27,6 @@ public class Vec2
 		double y1 = y/l;
 		return new Vec2(x1,y1);
 	}
+
+
 }

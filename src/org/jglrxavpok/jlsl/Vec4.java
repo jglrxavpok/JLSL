@@ -1,5 +1,6 @@
 package org.jglrxavpok.jlsl;
 
+
 public class Vec4
 {
 	public double x;

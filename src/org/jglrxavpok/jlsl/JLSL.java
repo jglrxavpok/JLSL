@@ -3,9 +3,13 @@ package org.jglrxavpok.jlsl;
 import static org.objectweb.asm.Opcodes.*;
 
 import java.io.*;
-import java.lang.annotation.*;
 import java.util.*;
 
+import org.jglrxavpok.jlsl.GLSL.In;
+import org.jglrxavpok.jlsl.GLSL.Layout;
+import org.jglrxavpok.jlsl.GLSL.Out;
+import org.jglrxavpok.jlsl.GLSL.Uniform;
+import org.jglrxavpok.jlsl.GLSL.Varying;
 import org.objectweb.asm.*;
 import org.objectweb.asm.tree.*;
 import org.objectweb.asm.util.*;
@@ -178,6 +182,20 @@ public class JLSL
 				}
 			}
 			Stack<String> toStore = new Stack<String>();
+			Collections.sort(methodNodes, new Comparator<MethodNode>()
+			{
+
+				@Override
+				public int compare(MethodNode arg0, MethodNode arg1)
+				{
+					if(arg0.name.equals("main"))
+						return 1;
+					if(arg1.name.equals("main"))
+						return -1;
+					return 0;
+				}
+				
+			});
 			for(MethodNode node : methodNodes)
 			{
 				List<LocalVariableNode> localVariables = node.localVariables;
@@ -188,7 +206,7 @@ public class JLSL
 					varNameMap.put(var.index, var.name);
 					varTypeMap.put(var.index, typesFromDesc(var.desc)[0]);
 				}
-				handleMethodNode(node, buffer, toStore, initialized, varTypeMap, varNameMap);
+				buffer.append(handleMethodNode(node, toStore, initialized, varTypeMap, varNameMap));
 			}
 
 			return buffer.toString();
@@ -200,10 +218,11 @@ public class JLSL
 		return null;
 	}
 
-	private static void handleMethodNode(MethodNode node, StringBuffer buffer, Stack<String> toStore, ArrayList<String> initialized, HashMap<Integer, String> varTypeMap,
+	private static StringBuffer handleMethodNode(MethodNode node, Stack<String> toStore, ArrayList<String> initialized, HashMap<Integer, String> varTypeMap,
 			HashMap<Integer, String> varNameMap)
 	{
-		if(node.name.equals("<init>")) return;
+		StringBuffer buffer = new StringBuffer();
+		if(node.name.equals("<init>")) return buffer;
 		String returnType = node.desc.substring(node.desc.indexOf(')') + 1);
 		buffer.append("\n" + translateToJLSL(typesFromDesc(returnType)[0]) + tab + node.name + "(");
 		String[] argsTypes = typesFromDesc(node.desc.substring(node.desc.indexOf('(')+1, node.desc.indexOf(')')));
@@ -472,7 +491,7 @@ public class JLSL
 				}
 			}
 		}
-		buffer.append("}\n");
+		return buffer.append("}\n");
 	}
 
 	private static String[] typesFromDesc(String desc, int startPos)
@@ -568,40 +587,4 @@ public class JLSL
 		return true;
 	}
 
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface Extensions
-	{
-		String[] value();
-	}
-
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface Layout
-	{
-		int location();
-	}
-
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface Attribute
-	{
-	}
-
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface Uniform
-	{
-	}
-
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface Varying
-	{
-	}
-
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface In
-	{
-	}
-
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface Out
-	{
-	}
 }

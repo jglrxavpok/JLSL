@@ -1,5 +1,7 @@
 package org.jglrxavpok.jlsl;
 
+
+
 public class Vec3
 {
 
@@ -30,4 +32,6 @@ public class Vec3
 		double z1 = z/l;
 		return new Vec3(x1,y1,z1);
 	}
+	
+
 }
