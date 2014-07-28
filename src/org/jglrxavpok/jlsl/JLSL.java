@@ -574,7 +574,7 @@ public class JLSL
 	@Retention(RetentionPolicy.RUNTIME)
 	public @interface Layout
 	{
-		int pos();
+		int location();
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
