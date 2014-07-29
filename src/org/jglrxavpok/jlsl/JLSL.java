@@ -17,7 +17,7 @@ import org.objectweb.asm.util.*;
 public class JLSL
 {
 
-	public static final boolean			DEBUG		= false;
+	public static final boolean			DEBUG		= true;
 	private static final String			tab		  = " ";
 	private static final String			tab4		 = "    ";
 
@@ -47,10 +47,19 @@ public class JLSL
 
 	private static String translateToJLSL(String type)
 	{
+		boolean isArray = false;
+		if(type.endsWith("[]"))
+		{
+			type = type.replace("[]", "");
+			isArray = true;
+		}
 		if(translations.containsKey(type))
 		{
-			return translations.get(type);
+			return translations.get(type)+(isArray ? "[]" : "");
 		}
+		String[] types = typesFromDesc(type, 0);
+		if(types.length != 0)
+			return types[0];
 		return type;
 	}
 
@@ -112,8 +121,10 @@ public class JLSL
 			{
 				buffer.append("#extension " + extension + " : enable\n");
 			}
+			HashMap<String, String> pending = new HashMap<String, String>();
 			for(FieldNode field : fieldNodes)
 			{
+				boolean isPending = false;
 				String name = field.name;
 				String type = typesFromDesc(field.desc)[0];
 				boolean isConstant = false;
@@ -122,6 +133,7 @@ public class JLSL
 					System.err.println("[WARNING] Type " + type + " is not supported by JLSL");
 					continue;
 				}
+				isPending = type.endsWith("[]");
 				isConstant = field.access == (ACC_FINAL | ACC_PUBLIC | ACC_STATIC);
 				List<AnnotationNode> annotations = field.visibleAnnotations;
 				String storageType = null;
@@ -174,7 +186,13 @@ public class JLSL
 				}
 				if(!isConstant)
 				{
-					buffer.append(storageType + tab + translateToJLSL(type) + tab + name + ";\n");
+					if(!isPending)
+						buffer.append(storageType + tab + translateToJLSL(type) + tab + name + ";\n");
+					else
+					{
+						buffer.append(storageType + tab + "$pending_"+name+"$;\n");
+						pending.put(name, null);
+					}
 				}
 				else
 				{
@@ -196,6 +214,8 @@ public class JLSL
 				}
 				
 			});
+			
+			
 			for(MethodNode node : methodNodes)
 			{
 				List<LocalVariableNode> localVariables = node.localVariables;
@@ -206,10 +226,17 @@ public class JLSL
 					varNameMap.put(var.index, var.name);
 					varTypeMap.put(var.index, typesFromDesc(var.desc)[0]);
 				}
-				buffer.append(handleMethodNode(node, toStore, initialized, varTypeMap, varNameMap));
+				buffer.append(handleMethodNode(node, toStore, initialized, varTypeMap, varNameMap, pending));
 			}
 
-			return buffer.toString();
+			String finalString = buffer.toString();
+			Iterator<String> it = pending.keySet().iterator();
+			while(it.hasNext())
+			{
+				String key = it.next();
+				finalString = finalString.replace("$pending_"+key+"$", pending.get(key)+tab+key);
+			}
+			return finalString;
 		}
 		catch(Exception e)
 		{
@@ -219,23 +246,26 @@ public class JLSL
 	}
 
 	private static StringBuffer handleMethodNode(MethodNode node, Stack<String> toStore, ArrayList<String> initialized, HashMap<Integer, String> varTypeMap,
-			HashMap<Integer, String> varNameMap)
+			HashMap<Integer, String> varNameMap, HashMap<String, String> pending)
 	{
+		HashMap<String, String> varNameTypeMap = new HashMap<String, String>();
 		StringBuffer buffer = new StringBuffer();
-		if(node.name.equals("<init>")) return buffer;
-		String returnType = node.desc.substring(node.desc.indexOf(')') + 1);
-		buffer.append("\n" + translateToJLSL(typesFromDesc(returnType)[0]) + tab + node.name + "(");
-		String[] argsTypes = typesFromDesc(node.desc.substring(node.desc.indexOf('(')+1, node.desc.indexOf(')')));
-		int argIndex = 0;
-		for(String argType : argsTypes)
+		if(!node.name.equals("<init>"))
 		{
-			if(argIndex != 0)
-				buffer.append(", ");
-			buffer.append(translateToJLSL(argType)+tab+varNameMap.get(argIndex+1));
-			argIndex++;
+    		String returnType = node.desc.substring(node.desc.indexOf(')') + 1);
+    		buffer.append("\n" + translateToJLSL(typesFromDesc(returnType)[0]) + tab + node.name + "(");
+    		String[] argsTypes = typesFromDesc(node.desc.substring(node.desc.indexOf('(')+1, node.desc.indexOf(')')));
+    		int argIndex = 0;
+    		for(String argType : argsTypes)
+    		{
+    			if(argIndex != 0)
+    				buffer.append(", ");
+    			buffer.append(translateToJLSL(argType)+tab+varNameMap.get(argIndex+1));
+    			argIndex++;
+    		}
+    		buffer.append(")\n{\n");
 		}
-		buffer.append(")\n{\n");
-			
+		Stack<String> typesStack = new Stack<String>();
 		InsnList instructions = node.instructions;
 
 		for(int index = 0; index < instructions.size(); index++ )
@@ -320,6 +350,53 @@ public class JLSL
 					String a = toStore.pop();
 					String b = toStore.pop();
 					toStore.push(b + "/" + a);
+				}
+				
+				else if(ainsnNode.getOpcode() == AASTORE || ainsnNode.getOpcode() == IASTORE || ainsnNode.getOpcode() == BASTORE
+						|| ainsnNode.getOpcode() == LASTORE || ainsnNode.getOpcode() == SASTORE || ainsnNode.getOpcode() == FASTORE
+						|| ainsnNode.getOpcode() == DASTORE || ainsnNode.getOpcode() == CASTORE)
+				{
+					String result = "";
+					String toAdd = "";
+					for(int i = 0;i<2;i++)
+					{
+    					String lastType = typesStack.pop();
+    					String copy = lastType;
+    					int dimensions = 0;
+    					if(copy != null)
+        					while(copy.indexOf("[]") >= 0)
+        					{
+        						copy = copy.substring(copy.indexOf("[]")+2);
+        						dimensions++;
+        					}
+    					String val = toStore.pop();
+    					String arrayIndex = "";
+    					for(int dim = 0;dim<dimensions;dim++)
+    					{
+    						arrayIndex = "["+toStore.pop()+"]" + arrayIndex;
+    					}
+    					String name = toStore.pop();
+    					if(i == 1)
+    						result = val+toAdd+" = "+result;
+    					else if(i == 0)
+    					{
+    						result = val + result;
+    						toAdd = "["+name+"]";
+    					}
+					}
+					buffer.append(tab4+result+";\n");
+				}
+				else if(ainsnNode.getOpcode() == AALOAD)
+				{
+					String val = toStore.pop();
+					String name = toStore.pop();
+					System.out.println(val+";"+name);
+					toStore.push(name+"["+val+"]");
+					if(varNameTypeMap.containsKey(name+"["+val+"]"))
+					{
+						varNameTypeMap.put(name+"["+val+"]", name.substring(0, name.indexOf("[")));
+					}
+					typesStack.push(varNameTypeMap.get(name+"["+val+"]"));
 				}
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.LDC_INSN)
@@ -417,7 +494,15 @@ public class JLSL
 				{
 					String val = toStore.pop();
 					String owner = toStore.pop();
-					buffer.append(tab4 + (owner.equals("this") ? "" : (owner + ".")) + fieldNode.name + " = " + val + ";\n");
+					if(pending.containsKey(fieldNode.name))
+					{
+						String s = pending.get(fieldNode.name);
+						if(s == null)
+							s = "";
+						pending.put(fieldNode.name, s+val);
+					}
+					else
+						buffer.append(tab4 + (owner.equals("this") ? "" : (owner + ".")) + fieldNode.name + " = " + val + ";\n");
 				}
 				else if(fieldNode.getOpcode() == GETFIELD)
 				{
@@ -427,7 +512,52 @@ public class JLSL
 					else
 						ownership += ".";
 					toStore.push(ownership + fieldNode.name);
+					typesStack.push(typesFromDesc(fieldNode.desc)[0]);
 				}
+			}
+			else if(ainsnNode.getType() == AbstractInsnNode.INT_INSN)
+			{
+				IntInsnNode intNode = (IntInsnNode)ainsnNode;
+				int operand = intNode.operand;
+				if(intNode.getOpcode() == BIPUSH)
+				{
+					toStore.push(""+operand);
+				}
+				else if(intNode.getOpcode() == NEWARRAY)
+				{
+					String type = translateToJLSL(Printer.TYPES[operand]);
+					String s = type+toStore.pop();
+					toStore.push(s);
+				}
+			}
+			else if(ainsnNode.getType() == AbstractInsnNode.TYPE_INSN)
+			{
+				TypeInsnNode typeNode = (TypeInsnNode)ainsnNode;
+				String operand = typeNode.desc;
+				if(typeNode.getOpcode() == ANEWARRAY)
+				{
+					String s = translateToJLSL(operand.replace("/", "."))+"["+toStore.pop()+"]";
+					toStore.push(s);
+				}
+			}
+			else if(ainsnNode.getType() == AbstractInsnNode.MULTIANEWARRAY_INSN)
+			{
+				MultiANewArrayInsnNode multiArrayNode = (MultiANewArrayInsnNode)ainsnNode;
+				String operand = multiArrayNode.desc;
+				String desc = translateToJLSL(translateToJLSL(operand).replace("[]", ""));
+				String s = desc;
+				if(desc.length() == 1)
+					s = typesFromDesc(desc)[0];
+				ArrayList<String> list = new ArrayList<String>();
+				for(int dim = 0;dim<multiArrayNode.dims;dim++)
+				{
+					list.add(toStore.pop());
+				}
+				for(int dim = 0;dim<multiArrayNode.dims;dim++)
+				{
+					s+="["+list.get(list.size()-dim-1)+"]";
+				}
+				toStore.push(s);
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.METHOD_INSN)
 			{
@@ -491,21 +621,33 @@ public class JLSL
 				}
 			}
 		}
-		return buffer.append("}\n");
+		if(!node.name.equals("<init>"))
+		{
+			buffer.append("}\n");
+		}
+		return buffer;
 	}
 
 	private static String[] typesFromDesc(String desc, int startPos)
 	{
 		boolean parsingObjectClass = false;
+		boolean parsingArrayClass = false;
 		ArrayList<String> types = new ArrayList<String>();
 		String currentObjectClass = null;
+		String currentArrayClass = null;
+		int dims = 1;
 		for(int i = startPos; i < desc.length(); i++ )
 		{
 			char c = desc.charAt(i);
 
-			if(!parsingObjectClass)
+			if(!parsingObjectClass && !parsingArrayClass)
 			{
-				if(c == 'L')
+				if(c == '[')
+				{
+					parsingArrayClass = true;
+					currentArrayClass = "";
+				}
+				else if(c == 'L')
 				{
 					parsingObjectClass = true;
 					currentObjectClass = "";
@@ -547,7 +689,7 @@ public class JLSL
 					types.add("short");
 				}
 			}
-			else
+			else if(parsingObjectClass)
 			{
 				if(c == '/')
 					c = '.';
@@ -559,10 +701,40 @@ public class JLSL
 				}
 				currentObjectClass += c;
 			}
+			else if(parsingArrayClass)
+			{
+				if(c == '[')
+				{
+					dims++;
+					continue;
+				}
+				if(c == '/')
+					c = '.';
+				if(c == 'L')
+					continue;
+				else if(c == ';')
+				{
+					parsingArrayClass = false;
+					String dim = "";
+					for(int ii = 0;ii<dims;ii++)
+						dim+="[]";
+					types.add(currentArrayClass+dim);
+					dims = 1;
+					continue;
+				}
+				currentArrayClass += c;
+			}
 		}
 		if(parsingObjectClass)
 		{
 			types.add(currentObjectClass);
+		}
+		if(parsingArrayClass)
+		{
+			String dim = "";
+			for(int ii = 0;ii<dims;ii++)
+				dim+="[]";
+			types.add(currentArrayClass+dim);
 		}
 		return types.toArray(new String[0]);
 	}
@@ -577,6 +749,8 @@ public class JLSL
 		String[] types = typesFromDesc(desc);
 		for(String type : types)
 		{
+			if(type.endsWith("[]"))
+				type = type.replace("[]", "");
 			type = translateToJLSL(type);
 			if(!type.equals("int") && !type.equals("float") && !type.equals("double") && !type.equals("boolean") && !type.equals("vec2") && !type.equals("vec3")
 					&& !type.equals("vec4") && !type.equals("mat3") && !type.equals("mat2") && !type.equals("mat4"))
