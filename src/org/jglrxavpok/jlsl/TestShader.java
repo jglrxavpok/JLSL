@@ -1,6 +1,5 @@
 package org.jglrxavpok.jlsl;
 
-import org.jglrxavpok.jlsl.GLSL.Attribute;
 import org.jglrxavpok.jlsl.GLSL.Uniform;
 
 @GLSL.Extensions({"GL_ARB_explicit_uniform_location", "GL_ARB_arrays_of_arrays"})
@@ -10,7 +9,7 @@ public class TestShader extends FragmentShader
 	@Uniform
 	private Vec2 screenSize;
 	
-	@Attribute
+	@Uniform
 	private Vec2[] list = new Vec2[70];
 	
 	@Uniform
@@ -24,8 +23,22 @@ public class TestShader extends FragmentShader
 		Vec4 v = new Vec4(gl_FragCoord.x/screenSize.x,gl_FragCoord.y/screenSize.y,gl_FragCoord.z,gl_FragCoord.w);
 		v = normalizer(v, v.length());
 		Mat2 testMatrix = new Mat2(new Vec2(v.x, v.y), new Vec2(0,1));
-		list[10] = list2[0][1];
+		Vec2 test = list2[0][1];
 		gl_FragColor = v;
+		
+		
+		
+		vignette();
+	}
+
+	private void vignette()
+	{
+		Vec4 distance = gl_FragCoord.sub(new Vec4(screenSize.x/2, screenSize.y/2, gl_FragCoord.z, gl_FragCoord.w));
+		if(distance.length() > 10) // Not implemented yet --> TODO
+		{
+			distance.normalize();
+			distance.length();
+		}
 	}
 
 	private Vec4 normalizer(Vec4 v, double l)

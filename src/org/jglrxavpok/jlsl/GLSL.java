@@ -46,4 +46,14 @@ public class GLSL
 	public @interface SwizzlingMethod // TODO
 	{
 	}
+	
+	@Retention(RetentionPolicy.RUNTIME)
+	public @interface Substitute
+	{
+		String value();
+
+		boolean usesParenthesis();
+		
+		boolean ownerBefore();
+	}
 }

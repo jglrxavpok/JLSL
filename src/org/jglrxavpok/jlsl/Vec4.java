@@ -1,5 +1,7 @@
 package org.jglrxavpok.jlsl;
 
+import org.jglrxavpok.jlsl.GLSL.Substitute;
+
 
 public class Vec4
 {
@@ -34,5 +36,17 @@ public class Vec4
 		double z1 = z/l;
 		double w1 = w/l;
 		return new Vec4(x1,y1,z1,w1);
+	}
+	
+	@Substitute(value = "+", usesParenthesis = false, ownerBefore = true)
+	public Vec4 add(Vec4 v)
+	{
+		return new Vec4(x+v.x,y+v.y,z+v.z,w+v.w);
+	}
+	
+	@Substitute(value = "-", usesParenthesis = false, ownerBefore = true)
+	public Vec4 sub(Vec4 v)
+	{
+		return new Vec4(x-v.x,y-v.y,z-v.z,w-v.w);
 	}
 }

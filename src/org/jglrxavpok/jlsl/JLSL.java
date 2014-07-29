@@ -5,9 +5,11 @@ import static org.objectweb.asm.Opcodes.*;
 import java.io.*;
 import java.util.*;
 
+import org.jglrxavpok.jlsl.GLSL.Attribute;
 import org.jglrxavpok.jlsl.GLSL.In;
 import org.jglrxavpok.jlsl.GLSL.Layout;
 import org.jglrxavpok.jlsl.GLSL.Out;
+import org.jglrxavpok.jlsl.GLSL.Substitute;
 import org.jglrxavpok.jlsl.GLSL.Uniform;
 import org.jglrxavpok.jlsl.GLSL.Varying;
 import org.objectweb.asm.*;
@@ -245,9 +247,11 @@ public class JLSL
 		return null;
 	}
 
+	@SuppressWarnings("unchecked")
 	private static StringBuffer handleMethodNode(MethodNode node, Stack<String> toStore, ArrayList<String> initialized, HashMap<Integer, String> varTypeMap,
 			HashMap<Integer, String> varNameMap, HashMap<String, String> pending)
 	{
+		int currentLine = 0;
 		HashMap<String, String> varNameTypeMap = new HashMap<String, String>();
 		StringBuffer buffer = new StringBuffer();
 		if(!node.name.equals("<init>"))
@@ -263,7 +267,7 @@ public class JLSL
     			buffer.append(translateToJLSL(argType)+tab+varNameMap.get(argIndex+1));
     			argIndex++;
     		}
-    		buffer.append(")\n{\n");
+    		buffer.append(")\n{"+getEndOfLine(currentLine)+"\n");
 		}
 		Stack<String> typesStack = new Stack<String>();
 		InsnList instructions = node.instructions;
@@ -325,7 +329,7 @@ public class JLSL
 				else if(ainsnNode.getOpcode() == LRETURN || ainsnNode.getOpcode() == DRETURN || ainsnNode.getOpcode() == FRETURN || ainsnNode.getOpcode() == IRETURN
 						|| ainsnNode.getOpcode() == ARETURN)
 				{
-					buffer.append(tab4 + "return " + toStore.pop() + ";\n");
+					buffer.append(tab4 + "return " + toStore.pop() + ";"+getEndOfLine(currentLine)+"\n");
 				}
 				else if(ainsnNode.getOpcode() == LADD || ainsnNode.getOpcode() == DADD || ainsnNode.getOpcode() == FADD || ainsnNode.getOpcode() == IADD)
 				{
@@ -384,13 +388,12 @@ public class JLSL
     						toAdd = "["+name+"]";
     					}
 					}
-					buffer.append(tab4+result+";\n");
+					buffer.append(tab4+result+";"+getEndOfLine(currentLine)+"\n");
 				}
 				else if(ainsnNode.getOpcode() == AALOAD)
 				{
 					String val = toStore.pop();
 					String name = toStore.pop();
-					System.out.println(val+";"+name);
 					toStore.push(name+"["+val+"]");
 					if(varNameTypeMap.containsKey(name+"["+val+"]"))
 					{
@@ -412,59 +415,59 @@ public class JLSL
 				{
 					if(!initialized.contains(varNameMap.get(operand)))
 					{
-						buffer.append(tab4 + translateToJLSL("int") + tab + varNameMap.get(operand) + " = " + toStore.pop() + ";\n");
+						buffer.append(tab4 + translateToJLSL("int") + tab + varNameMap.get(operand) + " = " + toStore.pop() + ";"+getEndOfLine(currentLine)+"\n");
 						initialized.add(varNameMap.get(operand));
 					}
 					else
 					{
-						buffer.append(tab4 + varNameMap.get(operand) + " = " + toStore.pop() + ";\n");
+						buffer.append(tab4 + varNameMap.get(operand) + " = " + toStore.pop() + ";"+getEndOfLine(currentLine)+"\n");
 					}
 				}
 				else if(ainsnNode.getOpcode() == DSTORE)
 				{
 					if(!initialized.contains(varNameMap.get(operand)))
 					{
-						buffer.append(tab4 + translateToJLSL("double") + tab + varNameMap.get(operand) + " = " + toStore.pop() + ";\n");
+						buffer.append(tab4 + translateToJLSL("double") + tab + varNameMap.get(operand) + " = " + toStore.pop() + ";"+getEndOfLine(currentLine)+"\n");
 						initialized.add(varNameMap.get(operand));
 					}
 					else
 					{
-						buffer.append(tab4 + varNameMap.get(operand) + " = " + toStore.pop() + ";\n");
+						buffer.append(tab4 + varNameMap.get(operand) + " = " + toStore.pop() + ";"+getEndOfLine(currentLine)+"\n");
 					}
 				}
 				else if(ainsnNode.getOpcode() == LSTORE)
 				{
 					if(!initialized.contains(varNameMap.get(operand)))
 					{
-						buffer.append(tab4 + translateToJLSL("long") + tab + varNameMap.get(operand) + " = " + toStore.pop() + ";\n");
+						buffer.append(tab4 + translateToJLSL("long") + tab + varNameMap.get(operand) + " = " + toStore.pop() + ";"+getEndOfLine(currentLine)+"\n");
 						initialized.add(varNameMap.get(operand));
 					}
 					else
 					{
-						buffer.append(tab4 + varNameMap.get(operand) + " = " + toStore.pop() + ";\n");
+						buffer.append(tab4 + varNameMap.get(operand) + " = " + toStore.pop() + ";"+getEndOfLine(currentLine)+"\n");
 					}
 				}
 				else if(ainsnNode.getOpcode() == FSTORE)
 				{
 					if(!initialized.contains(varNameMap.get(operand)))
 					{
-						buffer.append(tab4 + translateToJLSL("float") + tab + varNameMap.get(operand) + " = " + toStore.pop() + ";\n");
+						buffer.append(tab4 + translateToJLSL("float") + tab + varNameMap.get(operand) + " = " + toStore.pop() + ";"+getEndOfLine(currentLine)+"\n");
 						initialized.add(varNameMap.get(operand));
 					}
 					else
 					{
-						buffer.append(tab4 + varNameMap.get(operand) + " = " + toStore.pop() + ";\n");
+						buffer.append(tab4 + varNameMap.get(operand) + " = " + toStore.pop() + ";"+getEndOfLine(currentLine)+"\n");
 					}
 				}
 				else if(ainsnNode.getOpcode() == ASTORE)
 				{
 					if(!initialized.contains(varNameMap.get(operand)))
 					{
-						buffer.append(tab4 + translateToJLSL(varTypeMap.get(operand)) + " " + varNameMap.get(operand) + " = " + toStore.pop() + ";\n");
+						buffer.append(tab4 + translateToJLSL(varTypeMap.get(operand)) + " " + varNameMap.get(operand) + " = " + toStore.pop() + ";"+getEndOfLine(currentLine)+"\n");
 						initialized.add(varNameMap.get(operand));
 					}
 					else
-						buffer.append(tab4 + varNameMap.get(operand) + " = " + toStore.pop() + ";\n");
+						buffer.append(tab4 + varNameMap.get(operand) + " = " + toStore.pop() + ";"+getEndOfLine(currentLine)+"\n");
 				}
 				else if(ainsnNode.getOpcode() == FLOAD)
 				{
@@ -502,7 +505,7 @@ public class JLSL
 						pending.put(fieldNode.name, s+val);
 					}
 					else
-						buffer.append(tab4 + (owner.equals("this") ? "" : (owner + ".")) + fieldNode.name + " = " + val + ";\n");
+						buffer.append(tab4 + (owner.equals("this") ? "" : (owner + ".")) + fieldNode.name + " = " + val + ";"+getEndOfLine(currentLine)+"\n");
 				}
 				else if(fieldNode.getOpcode() == GETFIELD)
 				{
@@ -559,6 +562,16 @@ public class JLSL
 				}
 				toStore.push(s);
 			}
+			else if(ainsnNode.getType() == AbstractInsnNode.LINE)
+			{
+				LineNumberNode lineNode = (LineNumberNode)ainsnNode;
+				if(toStore.size() > 0)
+				if(toStore.peek().contains("(") && toStore.peek().contains(")"))
+				{
+					buffer.append(tab4+toStore.pop()+";"+getEndOfLine(currentLine)+"\n");
+				}
+				currentLine = lineNode.line;
+			}
 			else if(ainsnNode.getType() == AbstractInsnNode.METHOD_INSN)
 			{
 				MethodInsnNode methodNode = (MethodInsnNode)ainsnNode;
@@ -581,14 +594,17 @@ public class JLSL
 							margs = s + ", " + margs;
 					}
 					String n = methodNode.name;
+					if(margs == null)
+						margs = "";
 					if(methodNode.name.equals("<init>"))
 					{
 						n = "";
 						toStore.push(translateToJLSL(typesFromDesc("L" + methodNode.owner + ";")[0]) + n + "(" + margs + ")");
 					}
 					else
+					{
 						toStore.push(n + "(" + margs + ")");
-
+					}
 				}
 				else if(methodNode.getOpcode() == INVOKEVIRTUAL)
 				{
@@ -609,23 +625,65 @@ public class JLSL
 							margs = s + ", " + margs;
 					}
 					String n = methodNode.name;
+					AnnotationNode substituteAnnotation = getAnnotNode(methodNode.owner, n, methodNode.desc, Substitute.class.getCanonicalName());
+					boolean ownerBefore = false;
+					boolean parenthesis = true;
+					if(substituteAnnotation != null)
+					{
+						List<Object> values = substituteAnnotation.values;
+						for(int i = 0;i<values.size();i+=2)
+						{
+							String name = (String)values.get(i);
+							if(name.equals("value"))
+							{
+								n = (String)values.get(i+1);
+							}
+							else if(name.equals("ownerBefore"))
+							{
+								ownerBefore = (Boolean)values.get(i+1);
+							}
+							else if(name.equals("usesParenthesis"))
+							{
+								parenthesis = (Boolean)values.get(i+1);
+							}
+						}
+					}
 					if(methodNode.name.equals("<init>"))
 					{
 						n = "";
 					}
 					if(margs == null)
 						margs = "";
-					else
+					else if(parenthesis)
 						margs = ", " + margs;
-					toStore.push(n + "(" + toStore.pop() + margs + ")");
+					if(!ownerBefore)
+					{
+						toStore.push(n + (parenthesis ? "(" :"") + toStore.pop() + margs + (parenthesis ? ")" :""));
+					}
+					else
+					{
+						toStore.push(toStore.pop() + n + (parenthesis ? "(" :"")  + margs + (parenthesis ? ")" :""));
+					}
 				}
 			}
 		}
 		if(!node.name.equals("<init>"))
 		{
-			buffer.append("}\n");
+			buffer.append("}"+getEndOfLine(currentLine)+"\n");
 		}
+		else
+			buffer.delete(0, buffer.length()-1);
 		return buffer;
+	}
+
+	private static String getEndOfLine(int currentLine)
+	{
+		String s = "";
+//		if(currentLine % 5 == 0)
+		{
+			s = " //Line #"+currentLine;
+		}
+		return s;
 	}
 
 	private static String[] typesFromDesc(String desc, int startPos)
@@ -761,4 +819,38 @@ public class JLSL
 		return true;
 	}
 
+	@SuppressWarnings("unchecked")
+	private static AnnotationNode getAnnotNode(String methodClass, String methodName, String methodDesc, String annotationClass)
+	{
+		try
+		{
+			ClassReader reader = new ClassReader(JLSL.class.getResourceAsStream("/"+methodClass.replace(".", "/")+".class"));
+			ClassNode classNode = new ClassNode();
+			reader.accept(classNode, 0);
+			List<MethodNode> methodList = classNode.methods;
+			for(MethodNode methodNode : methodList)
+			{
+				if(methodNode.name.equals(methodName) && methodNode.desc.equals(methodDesc))
+				{
+					List<AnnotationNode> annots = methodNode.visibleAnnotations;
+					if(annots != null)
+    					for(AnnotationNode annot : annots)
+    					{
+    						if(annot.desc.replace("$", "/").equals("L" + annotationClass.replace(".", "/") + ";"))
+    						{
+    							return annot;
+    						}
+    					}
+					else
+						return null;
+				}
+			}
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+			return null;
+		}
+		return null;
+	}
 }
