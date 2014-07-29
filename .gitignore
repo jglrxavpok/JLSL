@@ -1,6 +1,6 @@
 *.class
 bin/
-.settings
+.settings/
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
