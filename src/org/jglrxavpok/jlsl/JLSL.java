@@ -20,8 +20,8 @@ public class JLSL
 {
 
 	public static final boolean			DEBUG		= true;
-	private static final String			tab		  = " ";
-	private static final String			tab4		 = "    ";
+	private static String			tab		  = " ";
+	private static String			tab4		 = "    ";
 
 	private static HashMap<String, String> translations = new HashMap<String, String>();
 
@@ -252,6 +252,7 @@ public class JLSL
 			HashMap<Integer, String> varNameMap, HashMap<String, String> pending)
 	{
 		int currentLine = 0;
+		int lineJustJumped = 0;
 		HashMap<String, String> varNameTypeMap = new HashMap<String, String>();
 		StringBuffer buffer = new StringBuffer();
 		if(!node.name.equals("<init>"))
@@ -270,8 +271,13 @@ public class JLSL
     		buffer.append(")\n{"+getEndOfLine(currentLine)+"\n");
 		}
 		Stack<String> typesStack = new Stack<String>();
+		Stack<LabelNode> toJump = new Stack<LabelNode>();
 		InsnList instructions = node.instructions;
-
+		List<Label> hasJumpedTo = new ArrayList<Label>();
+		Label currentLabel = null;
+		Label lastLabel = null;
+		int lastFrameType = 0;
+		boolean hasReachedAGoto = false;
 		for(int index = 0; index < instructions.size(); index++ )
 		{
 			AbstractInsnNode ainsnNode = instructions.get(index);
@@ -400,6 +406,83 @@ public class JLSL
 						varNameTypeMap.put(name+"["+val+"]", name.substring(0, name.indexOf("[")));
 					}
 					typesStack.push(varNameTypeMap.get(name+"["+val+"]"));
+				}
+			}
+			else if(ainsnNode.getType() == AbstractInsnNode.LABEL)
+			{
+				lastLabel = currentLabel;
+				LabelNode labelNode = (LabelNode)ainsnNode;
+				LabelNode toJumpNode = null;
+				currentLabel = labelNode.getLabel();
+				while(!toJump.isEmpty())
+				{
+					toJumpNode = toJump.peek();
+					if(labelNode.getLabel().equals(toJumpNode.getLabel()))
+    				{
+    					tab4 = tab4.replaceFirst("    ", "");
+    					if(!hasJumpedTo.contains(currentLabel))
+    						buffer.append(tab4+"}\n");
+    					else
+    						tab4+="    ";
+    					toJump.pop();
+    					hasJumpedTo.add(currentLabel);
+    				}
+					else
+						break;
+				}
+			}
+			else if(ainsnNode.getType() == AbstractInsnNode.FRAME)
+			{
+				FrameNode frameNode = (FrameNode)ainsnNode;
+				if(frameNode.type == F_APPEND)
+				{
+					tab4 = tab4.replaceFirst("    ", "");
+					buffer.append(tab4+"}\n"+tab4+"else\n"+tab4+"{\n");
+					tab4+="    ";
+				}
+				else if(frameNode.type == F_SAME && lastFrameType == F_APPEND)
+				{
+					if((!hasJumpedTo.contains(lastLabel)  && !hasJumpedTo.contains(currentLabel)) || (hasReachedAGoto  && !hasJumpedTo.contains(currentLabel)))
+					{
+						tab4 = tab4.replaceFirst("    ", "");
+						buffer.append(tab4+"}\n");
+					}
+					else if(hasJumpedTo.contains(currentLabel) && !hasJumpedTo.contains(lastLabel) && !hasReachedAGoto)
+					{
+						tab4 = tab4.replaceFirst("    ", "");
+						buffer.append(tab4+"}\n");
+					}
+				}
+				else if(frameNode.type == F_SAME && lastFrameType == F_SAME)
+				{
+					if(!hasJumpedTo.contains(lastLabel) && !hasJumpedTo.contains(currentLabel))
+					{
+						tab4 = tab4.replaceFirst("    ", "");
+						buffer.append(tab4+"}\n");
+						buffer.append(tab4+"else\n"+tab4+"{\n");
+						tab4 += "    ";
+					}
+				}
+				lastFrameType = frameNode.type;
+			}
+			else if(ainsnNode.getType() == AbstractInsnNode.JUMP_INSN)
+			{
+				JumpInsnNode jumpNode = (JumpInsnNode)ainsnNode;
+				if(jumpNode.getOpcode() == IFEQ)
+				{
+					String var = toStore.pop();
+					buffer.append(tab4+"if("+var+")\n"+tab4+"{\n");
+					toJump.push(jumpNode.label);
+					tab4 +="    ";
+				}
+				else if(jumpNode.getOpcode() == GOTO)
+				{
+					toJump.push(jumpNode.label);
+					tab4 = tab4.replaceFirst("    ", "");
+					if(lastFrameType == F_APPEND)
+						buffer.append(tab4+"}\n");
+					hasReachedAGoto = true;
+					tab4+="    ";
 				}
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.LDC_INSN)
@@ -566,10 +649,10 @@ public class JLSL
 			{
 				LineNumberNode lineNode = (LineNumberNode)ainsnNode;
 				if(toStore.size() > 0)
-				if(toStore.peek().contains("(") && toStore.peek().contains(")"))
-				{
-					buffer.append(tab4+toStore.pop()+";"+getEndOfLine(currentLine)+"\n");
-				}
+    				if(toStore.peek().contains("(") && toStore.peek().contains(")"))
+    				{
+    					buffer.append(tab4+toStore.pop()+";"+getEndOfLine(currentLine)+"\n");
+    				}
 				currentLine = lineNode.line;
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.METHOD_INSN)
@@ -667,6 +750,13 @@ public class JLSL
 				}
 			}
 		}
+//		System.err.println(toJump.size());
+//		while(toJump.size() > 0)
+//		{
+//			tab4 = tab4.replaceFirst("    ", "");
+//			buffer.append(tab4+"}\n");
+//			toJump.pop();
+//		}
 		if(!node.name.equals("<init>"))
 		{
 			buffer.append("}"+getEndOfLine(currentLine)+"\n");

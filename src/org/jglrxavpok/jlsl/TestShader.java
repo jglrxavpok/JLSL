@@ -33,12 +33,36 @@ public class TestShader extends FragmentShader
 
 	private void vignette()
 	{
-		Vec4 distance = gl_FragCoord.sub(new Vec4(screenSize.x/2, screenSize.y/2, gl_FragCoord.z, gl_FragCoord.w));
-		if(distance.length() > 10) // Not implemented yet --> TODO
+		gl_FragColor = new Vec4(gl_FragCoord.x/screenSize.x, gl_FragCoord.y/screenSize.y, 0, 1);
+		
+		boolean b = false;
+		if(b)
 		{
-			distance.normalize();
-			distance.length();
+			gl_FragColor.w = 1;
+			gl_FragColor.x = 1;
+			if(b)
+			{
+    			gl_FragColor.x = 0;
+    			gl_FragColor.z = 0;
+			}
+			else
+			{
+				if(b)
+				{
+					gl_FragColor.z = 2;
+					if(b)
+						gl_FragColor.z = 9;
+					gl_FragColor.z = 10;
+				}
+				
+				gl_FragColor.z = 3;
+			}
 		}
+		else
+		{
+			gl_FragColor.y = 1;
+		}
+		gl_FragColor.x = 2;
 	}
 
 	private Vec4 normalizer(Vec4 v, double l)
