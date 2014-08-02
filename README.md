@@ -8,7 +8,7 @@ With JLSL, you're now able to program them directly with Java, and fix those pro
 
 Description:
 ====
-JLSL is a library that will convert your Java code into GLSL source code, that way one can create shaders without even needing to learn the specificities of the GLSL language!
+JLSL is a library that will convert Java code into GLSL source code, that way one can create shaders without even needing to learn the specificities of the GLSL language!
 
 
 Why does it exist ?

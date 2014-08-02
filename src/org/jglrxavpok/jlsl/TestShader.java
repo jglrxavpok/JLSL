@@ -1,8 +1,8 @@
 package org.jglrxavpok.jlsl;
 
-import org.jglrxavpok.jlsl.GLSL.Uniform;
+import org.jglrxavpok.jlsl.GLSL.*;
 
-@GLSL.Extensions({"GL_ARB_explicit_uniform_location", "GL_ARB_arrays_of_arrays"})
+@Extensions({"GL_ARB_explicit_uniform_location", "GL_ARB_arrays_of_arrays"})
 public class TestShader extends FragmentShader
 {
 
@@ -13,7 +13,7 @@ public class TestShader extends FragmentShader
 	private Vec2[] list = new Vec2[70];
 	
 	@Uniform
-	private Vec2[][] list2 = new Vec2[70][4];
+	private Vec2[][][] list2 = new Vec2[70][4][5];
 	
 	public static final double PI = 3.141592653589793D;
 	
@@ -23,7 +23,7 @@ public class TestShader extends FragmentShader
 		Vec4 v = new Vec4(gl_FragCoord.x/screenSize.x,gl_FragCoord.y/screenSize.y,gl_FragCoord.z,gl_FragCoord.w);
 		v = normalizer(v, v.length());
 		Mat2 testMatrix = new Mat2(new Vec2(v.x, v.y), new Vec2(0,1));
-		Vec2 test = list2[0][1];
+		Vec2 test = list2[0][1][2];
 		gl_FragColor = v;
 		
 		
