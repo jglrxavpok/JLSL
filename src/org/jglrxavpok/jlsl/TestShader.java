@@ -27,14 +27,13 @@ public class TestShader extends FragmentShader
 		gl_FragColor = v;
 		
 		
-		
 		vignette();
 	}
 
 	private void vignette()
 	{
 		gl_FragColor = new Vec4(gl_FragCoord.x/screenSize.x, gl_FragCoord.y/screenSize.y, 0, 1);
-		
+		gl_FragColor.z = 1;
 		boolean b = false;
 		if(b)
 		{
@@ -52,7 +51,7 @@ public class TestShader extends FragmentShader
 					gl_FragColor.z = 2;
 					if(b)
 						gl_FragColor.z = 9;
-					gl_FragColor.z = 10;
+//					gl_FragColor.z = 10;
 				}
 				
 				gl_FragColor.z = 3;

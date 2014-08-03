@@ -1,118 +1,20 @@
 package org.jglrxavpok.jlsl;
 
-import static org.objectweb.asm.Opcodes.AALOAD;
-import static org.objectweb.asm.Opcodes.AASTORE;
-import static org.objectweb.asm.Opcodes.ACC_FINAL;
-import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
-import static org.objectweb.asm.Opcodes.ACC_STATIC;
-import static org.objectweb.asm.Opcodes.ALOAD;
-import static org.objectweb.asm.Opcodes.ANEWARRAY;
-import static org.objectweb.asm.Opcodes.ARETURN;
-import static org.objectweb.asm.Opcodes.ASTORE;
-import static org.objectweb.asm.Opcodes.BASTORE;
-import static org.objectweb.asm.Opcodes.BIPUSH;
-import static org.objectweb.asm.Opcodes.CASTORE;
-import static org.objectweb.asm.Opcodes.DADD;
-import static org.objectweb.asm.Opcodes.DASTORE;
-import static org.objectweb.asm.Opcodes.DCONST_0;
-import static org.objectweb.asm.Opcodes.DCONST_1;
-import static org.objectweb.asm.Opcodes.DDIV;
-import static org.objectweb.asm.Opcodes.DLOAD;
-import static org.objectweb.asm.Opcodes.DMUL;
-import static org.objectweb.asm.Opcodes.DRETURN;
-import static org.objectweb.asm.Opcodes.DSTORE;
-import static org.objectweb.asm.Opcodes.DSUB;
-import static org.objectweb.asm.Opcodes.FADD;
-import static org.objectweb.asm.Opcodes.FASTORE;
-import static org.objectweb.asm.Opcodes.FCONST_0;
-import static org.objectweb.asm.Opcodes.FCONST_1;
-import static org.objectweb.asm.Opcodes.FCONST_2;
-import static org.objectweb.asm.Opcodes.FDIV;
-import static org.objectweb.asm.Opcodes.FLOAD;
-import static org.objectweb.asm.Opcodes.FMUL;
-import static org.objectweb.asm.Opcodes.FRETURN;
-import static org.objectweb.asm.Opcodes.FSTORE;
-import static org.objectweb.asm.Opcodes.FSUB;
-import static org.objectweb.asm.Opcodes.F_APPEND;
-import static org.objectweb.asm.Opcodes.F_SAME;
-import static org.objectweb.asm.Opcodes.GETFIELD;
-import static org.objectweb.asm.Opcodes.GOTO;
-import static org.objectweb.asm.Opcodes.IADD;
-import static org.objectweb.asm.Opcodes.IASTORE;
-import static org.objectweb.asm.Opcodes.ICONST_0;
-import static org.objectweb.asm.Opcodes.ICONST_1;
-import static org.objectweb.asm.Opcodes.ICONST_2;
-import static org.objectweb.asm.Opcodes.ICONST_3;
-import static org.objectweb.asm.Opcodes.ICONST_4;
-import static org.objectweb.asm.Opcodes.ICONST_5;
-import static org.objectweb.asm.Opcodes.IDIV;
-import static org.objectweb.asm.Opcodes.IFEQ;
-import static org.objectweb.asm.Opcodes.ILOAD;
-import static org.objectweb.asm.Opcodes.IMUL;
-import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
-import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
-import static org.objectweb.asm.Opcodes.IRETURN;
-import static org.objectweb.asm.Opcodes.ISTORE;
-import static org.objectweb.asm.Opcodes.ISUB;
-import static org.objectweb.asm.Opcodes.LADD;
-import static org.objectweb.asm.Opcodes.LASTORE;
-import static org.objectweb.asm.Opcodes.LDIV;
-import static org.objectweb.asm.Opcodes.LLOAD;
-import static org.objectweb.asm.Opcodes.LMUL;
-import static org.objectweb.asm.Opcodes.LRETURN;
-import static org.objectweb.asm.Opcodes.LSTORE;
-import static org.objectweb.asm.Opcodes.LSUB;
-import static org.objectweb.asm.Opcodes.NEWARRAY;
-import static org.objectweb.asm.Opcodes.PUTFIELD;
-import static org.objectweb.asm.Opcodes.SASTORE;
+import static org.objectweb.asm.Opcodes.*;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Stack;
+import java.io.*;
+import java.util.*;
 
-import org.jglrxavpok.jlsl.GLSL.Attribute;
-import org.jglrxavpok.jlsl.GLSL.In;
-import org.jglrxavpok.jlsl.GLSL.Layout;
-import org.jglrxavpok.jlsl.GLSL.Out;
 import org.jglrxavpok.jlsl.GLSL.Substitute;
-import org.jglrxavpok.jlsl.GLSL.Uniform;
-import org.jglrxavpok.jlsl.GLSL.Varying;
 import org.jglrxavpok.jlsl.fragments.*;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.AnnotationNode;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.FieldNode;
-import org.objectweb.asm.tree.FrameNode;
-import org.objectweb.asm.tree.InsnList;
-import org.objectweb.asm.tree.InsnNode;
-import org.objectweb.asm.tree.IntInsnNode;
-import org.objectweb.asm.tree.JumpInsnNode;
-import org.objectweb.asm.tree.LabelNode;
-import org.objectweb.asm.tree.LdcInsnNode;
-import org.objectweb.asm.tree.LineNumberNode;
-import org.objectweb.asm.tree.LocalVariableNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
-import org.objectweb.asm.tree.MultiANewArrayInsnNode;
-import org.objectweb.asm.tree.TypeInsnNode;
-import org.objectweb.asm.tree.VarInsnNode;
-import org.objectweb.asm.util.Printer;
-import org.objectweb.asm.util.TraceClassVisitor;
+import org.objectweb.asm.*;
+import org.objectweb.asm.tree.*;
+import org.objectweb.asm.util.*;
 
 public class BytecodeDecoder implements CodeDecoder
 {
 
-	public static final boolean DEBUG = false;
+	public static final boolean DEBUG = true;
 	private static String tab = " ";
 	private static String tab4 = "    ";
 
@@ -293,6 +195,8 @@ public class BytecodeDecoder implements CodeDecoder
 	{
 		int currentLine = 0;
 		int lineJustJumped = 0;
+		int frames = 0;
+		int framesToSkip = 0;
 		StringBuffer buffer = new StringBuffer(); // TODO: delete
 		HashMap<String, String> varNameTypeMap = new HashMap<String, String>();
 		if(!node.name.equals("<init>"))
@@ -311,6 +215,9 @@ public class BytecodeDecoder implements CodeDecoder
 		}
 		Stack<String> typesStack = new Stack<String>();
 		Stack<LabelNode> toJump = new Stack<LabelNode>();
+		Stack<Label> gotos = new Stack<Label>();
+		Stack<Label> ifs = new Stack<Label>();
+		Stack<Integer> lastFramesTypes = new Stack<Integer>();
 		InsnList instructions = node.instructions;
 		List<Label> hasJumpedTo = new ArrayList<Label>();
 		Label currentLabel = null;
@@ -320,88 +227,128 @@ public class BytecodeDecoder implements CodeDecoder
 		for(int index = 0; index < instructions.size(); index++)
 		{
 			AbstractInsnNode ainsnNode = instructions.get(index);
-			if(DEBUG) System.err.println(ainsnNode);
 			if(ainsnNode.getType() == AbstractInsnNode.INSN)
 			{
 				InsnNode insnNode = (InsnNode) ainsnNode;
 				if(insnNode.getOpcode() == ICONST_0)
 				{
+					LoadConstantFragment loadConstantFragment = new LoadConstantFragment();
+					loadConstantFragment.value = 0;
+					out.add(loadConstantFragment);
 					toStore.push("0");
 				}
 				else if(insnNode.getOpcode() == ICONST_1)
 				{
+					LoadConstantFragment loadConstantFragment = new LoadConstantFragment();
+					loadConstantFragment.value = 1;
+					out.add(loadConstantFragment);
 					toStore.push("1");
 				}
 				else if(insnNode.getOpcode() == ICONST_2)
 				{
+					LoadConstantFragment loadConstantFragment = new LoadConstantFragment();
+					loadConstantFragment.value = 2;
+					out.add(loadConstantFragment);
 					toStore.push("2");
 				}
 				else if(insnNode.getOpcode() == ICONST_3)
 				{
+					LoadConstantFragment loadConstantFragment = new LoadConstantFragment();
+					loadConstantFragment.value = 3;
+					out.add(loadConstantFragment);
 					toStore.push("3");
 				}
 				else if(insnNode.getOpcode() == ICONST_4)
 				{
+					LoadConstantFragment loadConstantFragment = new LoadConstantFragment();
+					loadConstantFragment.value = 4;
+					out.add(loadConstantFragment);
 					toStore.push("4");
 				}
 				else if(insnNode.getOpcode() == ICONST_5)
 				{
+					LoadConstantFragment loadConstantFragment = new LoadConstantFragment();
+					loadConstantFragment.value = 5;
+					out.add(loadConstantFragment);
 					toStore.push("5");
 				}
 
 				else if(insnNode.getOpcode() == DCONST_0)
 				{
+					LoadConstantFragment loadConstantFragment = new LoadConstantFragment();
+					loadConstantFragment.value = 0.0;
+					out.add(loadConstantFragment);
 					toStore.push("0");
 				}
 				else if(insnNode.getOpcode() == DCONST_1)
 				{
+					LoadConstantFragment loadConstantFragment = new LoadConstantFragment();
+					loadConstantFragment.value = 1.0;
+					out.add(loadConstantFragment);
 					toStore.push("1");
 				}
 
 				else if(insnNode.getOpcode() == FCONST_0)
 				{
+					LoadConstantFragment loadConstantFragment = new LoadConstantFragment();
+					loadConstantFragment.value = 0.f;
+					out.add(loadConstantFragment);
 					toStore.push("0.0");
 				}
 				else if(insnNode.getOpcode() == FCONST_1)
 				{
+					LoadConstantFragment loadConstantFragment = new LoadConstantFragment();
+					loadConstantFragment.value = 1.f;
+					out.add(loadConstantFragment);
 					toStore.push("1.0");
 				}
 				else if(insnNode.getOpcode() == FCONST_2)
 				{
+					LoadConstantFragment loadConstantFragment = new LoadConstantFragment();
+					loadConstantFragment.value = 2.f;
+					out.add(loadConstantFragment);
 					toStore.push("2.0");
 				}
 
 				else if(ainsnNode.getOpcode() == LRETURN || ainsnNode.getOpcode() == DRETURN || ainsnNode.getOpcode() == FRETURN || ainsnNode.getOpcode() == IRETURN || ainsnNode.getOpcode() == ARETURN)
 				{
+					ReturnValueFragment returnFrag = new ReturnValueFragment();
+					out.add(returnFrag);
 					buffer.append(tab4 + "return " + toStore.pop() + ";" + getEndOfLine(currentLine) + "\n");
 				}
 				else if(ainsnNode.getOpcode() == LADD || ainsnNode.getOpcode() == DADD || ainsnNode.getOpcode() == FADD || ainsnNode.getOpcode() == IADD)
 				{
 					String a = toStore.pop();
 					String b = toStore.pop();
+					out.add(new AddFragment());
 					toStore.push(b + "+" + a);
 				}
 				else if(ainsnNode.getOpcode() == LSUB || ainsnNode.getOpcode() == DSUB || ainsnNode.getOpcode() == FSUB || ainsnNode.getOpcode() == ISUB)
 				{
 					String a = toStore.pop();
 					String b = toStore.pop();
+					out.add(new SubFragment());
 					toStore.push(b + "-" + a);
 				}
 				else if(ainsnNode.getOpcode() == LMUL || ainsnNode.getOpcode() == DMUL || ainsnNode.getOpcode() == FMUL || ainsnNode.getOpcode() == IMUL)
 				{
 					String a = toStore.pop();
 					String b = toStore.pop();
+					out.add(new MulFragment());
 					toStore.push(b + "*" + a);
 				}
 				else if(ainsnNode.getOpcode() == LDIV || ainsnNode.getOpcode() == DDIV || ainsnNode.getOpcode() == FDIV || ainsnNode.getOpcode() == IDIV)
 				{
 					String a = toStore.pop();
 					String b = toStore.pop();
+					out.add(new DivFragment());
 					toStore.push(b + "/" + a);
 				}
 
 				else if(ainsnNode.getOpcode() == AASTORE || ainsnNode.getOpcode() == IASTORE || ainsnNode.getOpcode() == BASTORE || ainsnNode.getOpcode() == LASTORE || ainsnNode.getOpcode() == SASTORE || ainsnNode.getOpcode() == FASTORE || ainsnNode.getOpcode() == DASTORE || ainsnNode.getOpcode() == CASTORE)
 				{
+					ArrayStoreFragment storeFrag = new ArrayStoreFragment();
+					out.add(storeFrag);
 					String result = "";
 					String toAdd = "";
 					for(int i = 0; i < 2; i++)
@@ -433,6 +380,8 @@ public class BytecodeDecoder implements CodeDecoder
 				}
 				else if(ainsnNode.getOpcode() == AALOAD)
 				{
+					ArrayOfArrayLoadFragment loadFrag = new ArrayOfArrayLoadFragment();
+					out.add(loadFrag);
 					String val = toStore.pop();
 					String name = toStore.pop();
 					toStore.push(name + "[" + val + "]");
@@ -447,56 +396,97 @@ public class BytecodeDecoder implements CodeDecoder
 			{
 				lastLabel = currentLabel;
 				LabelNode labelNode = (LabelNode) ainsnNode;
-				LabelNode toJumpNode = null;
 				currentLabel = labelNode.getLabel();
 				while(!toJump.isEmpty())
 				{
-					toJumpNode = toJump.peek();
-					if(labelNode.getLabel().equals(toJumpNode.getLabel()))
+					if(labelNode.getLabel().equals(toJump.peek().getLabel()))
 					{
-						tab4 = tab4.replaceFirst("    ", "");
-						if(!hasJumpedTo.contains(currentLabel))
-							buffer.append(tab4 + "}\n");
-						else tab4 += "    ";
-						toJump.pop();
-						hasJumpedTo.add(currentLabel);
+						while(toJump.pop().getLabel().equals(labelNode.getLabel()))
+						{
+    						tab4 = tab4.replaceFirst("    ", "");
+    						if(!hasJumpedTo.contains(currentLabel))
+    							buffer.append(tab4 + "}\n");
+    						else tab4 += "    ";
+    						EndOfBlockFragment endOfBlockFrag = new EndOfBlockFragment();
+    						out.add(endOfBlockFrag);
+    						frames--;
+    						hasJumpedTo.add(currentLabel);
+						}
+						break;
 					}
-					else break;
+					else
+						break;
 				}
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.FRAME)
 			{
 				FrameNode frameNode = (FrameNode) ainsnNode;
-				if(frameNode.type == F_APPEND)
+//				if(frameNode.type == F_APPEND)
 				{
-					tab4 = tab4.replaceFirst("    ", "");
-					buffer.append(tab4 + "}\n" + tab4 + "else\n" + tab4 + "{\n");
-					tab4 += "    ";
-				}
-				else if(frameNode.type == F_SAME && lastFrameType == F_APPEND)
-				{
-					if((!hasJumpedTo.contains(lastLabel) && !hasJumpedTo.contains(currentLabel)) || (hasReachedAGoto && !hasJumpedTo.contains(currentLabel)))
+//					ElseStatementFragment elseFrag = new ElseStatementFragment();
+//					frames++;
+//					
+//					EndOfBlockFragment end = new EndOfBlockFragment();
+//					frames--;
+//					out.add(end);
+////					while(currentLabel.equals(toJump.peek().getLabel()))
+////					{
+////						toJump.pop();
+////						end = new EndOfBlockFragment();
+////						out.add(end);
+////					}
+//					out.add(elseFrag);
+//					tab4 = tab4.replaceFirst("    ", "");
+//					buffer.append(tab4 + "}\n" + tab4 + "else\n" + tab4 + "{\n");
+//					tab4 += "    ";
+//				}
+//				else if(frameNode.type == F_SAME)
+//				{
+//					if((!hasJumpedTo.contains(lastLabel) && !hasJumpedTo.contains(currentLabel)) || (hasReachedAGoto && !hasJumpedTo.contains(currentLabel)))
+//					{
+//						tab4 = tab4.replaceFirst("    ", "");
+//						buffer.append(tab4 + "}\n");
+//						hasReachedAGoto = false;
+//					}
+//					else if(hasJumpedTo.contains(currentLabel) && !hasJumpedTo.contains(lastLabel) && !hasReachedAGoto)
+//					{
+//						tab4 = tab4.replaceFirst("    ", "");
+//						buffer.append(tab4 + "}\n");
+//					}
+					if(framesToSkip > 0)
+						framesToSkip--;
+					else
 					{
-						tab4 = tab4.replaceFirst("    ", "");
-						buffer.append(tab4 + "}\n");
-						hasReachedAGoto = false;
-					}
-					else if(hasJumpedTo.contains(currentLabel) && !hasJumpedTo.contains(lastLabel) && !hasReachedAGoto)
-					{
-						tab4 = tab4.replaceFirst("    ", "");
-						buffer.append(tab4 + "}\n");
+    					if(frames == 0)
+    					{
+    						;
+    					}
+    					else
+    					{
+    						boolean a = (!ifs.isEmpty() && ifs.contains(currentLabel));
+    						boolean b = (gotos.isEmpty() || !gotos.contains(currentLabel));
+    						if(b || a)
+    						{
+        						EndOfBlockFragment end = new EndOfBlockFragment();
+        						out.add(end);
+        						frames--;
+        						if(a)
+        							ifs.pop();
+    						}
+    					}
+    					lastFrameType = frameNode.type;
 					}
 				}
-				else if(frameNode.type == F_SAME && lastFrameType == F_SAME)
-				{
-					if(!hasJumpedTo.contains(lastLabel) && !hasJumpedTo.contains(currentLabel))
-					{
-						tab4 = tab4.replaceFirst("    ", "");
-						buffer.append(tab4 + "}\n");
-						buffer.append(tab4 + "else\n" + tab4 + "{\n");
-						tab4 += "    ";
-					}
-				}
+//				else if(frameNode.type == F_SAME && lastFrameType == F_SAME)
+//				{
+////					if(!hasJumpedTo.contains(lastLabel) && !hasJumpedTo.contains(currentLabel))
+////					{
+////						tab4 = tab4.replaceFirst("    ", "");
+////						buffer.append(tab4 + "}\n");
+////						buffer.append(tab4 + "else\n" + tab4 + "{\n");
+////						tab4 += "    ";
+////					}
+//				}
 				lastFrameType = frameNode.type;
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.JUMP_INSN)
@@ -505,6 +495,11 @@ public class BytecodeDecoder implements CodeDecoder
 				if(jumpNode.getOpcode() == IFEQ)
 				{
 					String var = toStore.pop();
+					IfStatementFragment ifFrag = new IfStatementFragment();
+					frames++;
+					ifs.push(jumpNode.label.getLabel());
+					ifFrag.toJump = jumpNode.label.getLabel().toString();
+					out.add(ifFrag);
 					buffer.append(tab4 + "if(" + var + ")\n" + tab4 + "{\n");
 					toJump.push(jumpNode.label);
 					tab4 += "    ";
@@ -512,16 +507,29 @@ public class BytecodeDecoder implements CodeDecoder
 				else if(jumpNode.getOpcode() == GOTO)
 				{
 					toJump.push(jumpNode.label);
+					gotos.push(jumpNode.label.getLabel());
 					tab4 = tab4.replaceFirst("    ", "");
 					if(lastFrameType == F_APPEND) buffer.append(tab4 + "}\n");
 					hasReachedAGoto = true;
 					tab4 += "    ";
+					
+					EndOfBlockFragment end = new EndOfBlockFragment();
+					frames--;
+					out.add(end);
+
+					ElseStatementFragment elseFrag = new ElseStatementFragment();
+					frames++;
+					out.add(elseFrag);
+					framesToSkip=1;
 				}
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.LDC_INSN)
 			{
 				LdcInsnNode ldc = (LdcInsnNode) ainsnNode;
 				toStore.push("" + ldc.cst);
+				LdcFragment ldcFragment = new LdcFragment();
+				ldcFragment.value = ldc.cst;
+				out.add(ldcFragment);
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.VAR_INSN)
 			{
@@ -529,6 +537,11 @@ public class BytecodeDecoder implements CodeDecoder
 				int operand = varNode.var;
 				if(ainsnNode.getOpcode() == ISTORE)
 				{
+					StoreVariableFragment storeFrag = new StoreVariableFragment();
+					storeFrag.variableName = varNameMap.get(operand);
+					storeFrag.variableIndex = operand;
+					storeFrag.variableType = "int";
+					out.add(storeFrag);
 					if(!initialized.contains(varNameMap.get(operand)))
 					{
 						buffer.append(tab4 + translateToJLSL("int") + tab + varNameMap.get(operand) + " = " + toStore.pop() + ";" + getEndOfLine(currentLine) + "\n");
@@ -541,6 +554,11 @@ public class BytecodeDecoder implements CodeDecoder
 				}
 				else if(ainsnNode.getOpcode() == DSTORE)
 				{
+					StoreVariableFragment storeFrag = new StoreVariableFragment();
+					storeFrag.variableName = varNameMap.get(operand);
+					storeFrag.variableIndex = operand;
+					storeFrag.variableType = "double";
+					out.add(storeFrag);
 					if(!initialized.contains(varNameMap.get(operand)))
 					{
 						buffer.append(tab4 + translateToJLSL("double") + tab + varNameMap.get(operand) + " = " + toStore.pop() + ";" + getEndOfLine(currentLine) + "\n");
@@ -553,6 +571,11 @@ public class BytecodeDecoder implements CodeDecoder
 				}
 				else if(ainsnNode.getOpcode() == LSTORE)
 				{
+					StoreVariableFragment storeFrag = new StoreVariableFragment();
+					storeFrag.variableName = varNameMap.get(operand);
+					storeFrag.variableIndex = operand;
+					storeFrag.variableType = "long";
+					out.add(storeFrag);
 					if(!initialized.contains(varNameMap.get(operand)))
 					{
 						buffer.append(tab4 + translateToJLSL("long") + tab + varNameMap.get(operand) + " = " + toStore.pop() + ";" + getEndOfLine(currentLine) + "\n");
@@ -565,6 +588,11 @@ public class BytecodeDecoder implements CodeDecoder
 				}
 				else if(ainsnNode.getOpcode() == FSTORE)
 				{
+					StoreVariableFragment storeFrag = new StoreVariableFragment();
+					storeFrag.variableName = varNameMap.get(operand);
+					storeFrag.variableIndex = operand;
+					storeFrag.variableType = "float";
+					out.add(storeFrag);
 					if(!initialized.contains(varNameMap.get(operand)))
 					{
 						buffer.append(tab4 + translateToJLSL("float") + tab + varNameMap.get(operand) + " = " + toStore.pop() + ";" + getEndOfLine(currentLine) + "\n");
@@ -577,6 +605,11 @@ public class BytecodeDecoder implements CodeDecoder
 				}
 				else if(ainsnNode.getOpcode() == ASTORE)
 				{
+					StoreVariableFragment storeFrag = new StoreVariableFragment();
+					storeFrag.variableName = varNameMap.get(operand);
+					storeFrag.variableIndex = operand;
+					storeFrag.variableType = varTypeMap.get(operand);
+					out.add(storeFrag);
 					if(!initialized.contains(varNameMap.get(operand)))
 					{
 						buffer.append(tab4 + translateToJLSL(varTypeMap.get(operand)) + " " + varNameMap.get(operand) + " = " + toStore.pop() + ";" + getEndOfLine(currentLine) + "\n");
@@ -584,24 +617,13 @@ public class BytecodeDecoder implements CodeDecoder
 					}
 					else buffer.append(tab4 + varNameMap.get(operand) + " = " + toStore.pop() + ";" + getEndOfLine(currentLine) + "\n");
 				}
-				else if(ainsnNode.getOpcode() == FLOAD)
+				else if(ainsnNode.getOpcode() == FLOAD || ainsnNode.getOpcode() == LLOAD || ainsnNode.getOpcode() == ILOAD || ainsnNode.getOpcode() == DLOAD
+					|| ainsnNode.getOpcode() == ALOAD)
 				{
-					toStore.push(varNameMap.get(operand));
-				}
-				else if(ainsnNode.getOpcode() == LLOAD)
-				{
-					toStore.push(varNameMap.get(operand));
-				}
-				else if(ainsnNode.getOpcode() == ILOAD)
-				{
-					toStore.push(varNameMap.get(operand));
-				}
-				else if(ainsnNode.getOpcode() == DLOAD)
-				{
-					toStore.push(varNameMap.get(operand));
-				}
-				else if(ainsnNode.getOpcode() == ALOAD)
-				{
+					LoadVariableFragment loadFrag = new LoadVariableFragment();
+					loadFrag.variableName = varNameMap.get(operand);
+					loadFrag.variableIndex = operand;
+					out.add(loadFrag);
 					toStore.push(varNameMap.get(operand));
 				}
 			}
@@ -613,9 +635,8 @@ public class BytecodeDecoder implements CodeDecoder
 					String val = toStore.pop();
 					String owner = toStore.pop();
 					PutFieldFragment putFieldFrag = new PutFieldFragment();
-					putFieldFrag.value = val;
+					putFieldFrag.fieldDesc = typesFromDesc(fieldNode.desc)[0];
 					putFieldFrag.fieldName = fieldNode.name;
-					putFieldFrag.owner = owner;
 					out.add(putFieldFrag);
 				}
 				else if(fieldNode.getOpcode() == GETFIELD)
@@ -625,6 +646,10 @@ public class BytecodeDecoder implements CodeDecoder
 						ownership = "";
 					else ownership += ".";
 					toStore.push(ownership + fieldNode.name);
+					GetFieldFragment getFieldFrag = new GetFieldFragment();
+					getFieldFrag.fieldType = typesFromDesc(fieldNode.desc)[0];
+					getFieldFrag.fieldName = fieldNode.name;
+					out.add(getFieldFrag);
 					typesStack.push(typesFromDesc(fieldNode.desc)[0]);
 				}
 			}
@@ -634,12 +659,18 @@ public class BytecodeDecoder implements CodeDecoder
 				int operand = intNode.operand;
 				if(intNode.getOpcode() == BIPUSH)
 				{
+					BiPushFragment pushFrag = new BiPushFragment();
+					pushFrag.value = operand;
+					out.add(pushFrag);
 					toStore.push("" + operand);
 				}
 				else if(intNode.getOpcode() == NEWARRAY)
 				{
 					String type = translateToJLSL(Printer.TYPES[operand]);
 					String s = type + toStore.pop();
+					NewPrimitiveArrayFragment arrayFrag = new NewPrimitiveArrayFragment();
+					arrayFrag.type = Printer.TYPES[operand];
+					out.add(arrayFrag);
 					toStore.push(s);
 				}
 			}
@@ -649,13 +680,22 @@ public class BytecodeDecoder implements CodeDecoder
 				String operand = typeNode.desc;
 				if(typeNode.getOpcode() == ANEWARRAY)
 				{
-					String s = translateToJLSL(operand.replace("/", ".")) + "[" + toStore.pop() + "]";
+					int size = Integer.parseInt(toStore.pop());
+					NewArrayFragment newArray = new NewArrayFragment();
+					newArray.size = size;
+					newArray.type = operand.replace("/", ".");
+					out.add(newArray);
+					String s = translateToJLSL(operand.replace("/", ".")) + "[" + size + "]";
 					toStore.push(s);
 				}
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.MULTIANEWARRAY_INSN)
 			{
 				MultiANewArrayInsnNode multiArrayNode = (MultiANewArrayInsnNode) ainsnNode;
+				NewMultiArrayFragment multiFrag = new NewMultiArrayFragment();
+				multiFrag.type = typesFromDesc(multiArrayNode.desc)[0].replace("[]", "");
+				multiFrag.dimensions = multiArrayNode.dims;
+				multiFrag.sizes = new int[multiFrag.dimensions];
 				String operand = multiArrayNode.desc;
 				String desc = translateToJLSL(translateToJLSL(operand).replace("[]", ""));
 				String s = desc;
@@ -668,7 +708,9 @@ public class BytecodeDecoder implements CodeDecoder
 				for(int dim = 0; dim < multiArrayNode.dims; dim++)
 				{
 					s += "[" + list.get(list.size() - dim - 1) + "]";
+					multiFrag.sizes[dim] = Integer.parseInt(list.get(list.size() - dim - 1));
 				}
+				out.add(multiFrag);
 				toStore.push(s);
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.LINE)
