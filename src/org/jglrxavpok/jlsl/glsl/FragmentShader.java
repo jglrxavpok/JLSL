@@ -1,4 +1,4 @@
-package org.jglrxavpok.jlsl;
+package org.jglrxavpok.jlsl.glsl;
 
 public abstract class FragmentShader extends ShaderBase
 {

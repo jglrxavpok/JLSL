@@ -2,6 +2,8 @@ package org.jglrxavpok.jlsl;
 
 import java.io.*;
 
+import org.jglrxavpok.jlsl.glsl.*;
+
 public class NewTest
 {
 

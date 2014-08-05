@@ -7,4 +7,6 @@ public class NewClassFragment extends CodeFragment
 	public String className;
 	public String superclass;
 	public String[] interfaces;
+	public String sourceFile = "Unknown";
+	public int classVersion;
 }

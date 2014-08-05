@@ -1,4 +1,4 @@
-package org.jglrxavpok.jlsl;
+package org.jglrxavpok.jlsl.glsl;
 
 public class Mat2
 {

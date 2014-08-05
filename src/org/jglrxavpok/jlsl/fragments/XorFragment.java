@@ -1,6 +1,6 @@
 package org.jglrxavpok.jlsl.fragments;
 
-public class NewArrayFragment extends CodeFragment
+public class XorFragment extends CodeFragment
 {
 	public String type;
 }

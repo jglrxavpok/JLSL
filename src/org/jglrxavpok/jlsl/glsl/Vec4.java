@@ -1,6 +1,6 @@
-package org.jglrxavpok.jlsl;
+package org.jglrxavpok.jlsl.glsl;
 
-import org.jglrxavpok.jlsl.GLSL.Substitute;
+import org.jglrxavpok.jlsl.glsl.GLSL.*;
 
 
 public class Vec4

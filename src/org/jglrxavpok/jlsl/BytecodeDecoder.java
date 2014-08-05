@@ -5,8 +5,9 @@ import static org.objectweb.asm.Opcodes.*;
 import java.io.*;
 import java.util.*;
 
-import org.jglrxavpok.jlsl.GLSL.Substitute;
 import org.jglrxavpok.jlsl.fragments.*;
+import org.jglrxavpok.jlsl.glsl.*;
+import org.jglrxavpok.jlsl.glsl.GLSL.*;
 import org.objectweb.asm.*;
 import org.objectweb.asm.tree.*;
 import org.objectweb.asm.util.*;
@@ -84,6 +85,10 @@ public class BytecodeDecoder implements CodeDecoder
 			classFragment.className = classNode.name.replace("/", ".").replace("$", ".");
 			classFragment.superclass = classNode.superName.replace("/", ".").replace("$", ".");
 			classFragment.access = new AccessPolicy(classNode.access);
+			if(classNode.sourceFile != null)
+				classFragment.sourceFile = classNode.sourceFile;
+			classFragment.classVersion = classNode.version;
+			
 			List<String> interfaces = classNode.interfaces;
 			classFragment.interfaces = interfaces.toArray(new String[0]);
 
@@ -106,6 +111,7 @@ public class BytecodeDecoder implements CodeDecoder
 				FieldFragment fieldFragment = new FieldFragment();
 				fieldFragment.name = name;
 				fieldFragment.type = type;
+				fieldFragment.initialValue = field.value;
 				fieldFragment.access = new AccessPolicy(field.access);
 				List<AnnotationNode> annotations = field.visibleAnnotations;
 				if(annotations != null)
@@ -140,6 +146,7 @@ public class BytecodeDecoder implements CodeDecoder
 				{
 					startOfMethodFragment.varNameMap.put(var.index, var.name);
 					startOfMethodFragment.varTypeMap.put(var.index, typesFromDesc(var.desc)[0]);
+					startOfMethodFragment.varName2TypeMap.put(var.name, typesFromDesc(var.desc)[0]);
 				}
 				String[] argsTypes = typesFromDesc(node.desc.substring(node.desc.indexOf('(') + 1, node.desc.indexOf(')')));
 				int argIndex = 0;
@@ -164,6 +171,7 @@ public class BytecodeDecoder implements CodeDecoder
 				endOfMethodFragment.returnType = startOfMethodFragment.returnType;
 				endOfMethodFragment.varNameMap = startOfMethodFragment.varNameMap;
 				endOfMethodFragment.varTypeMap = startOfMethodFragment.varTypeMap;
+				endOfMethodFragment.varName2TypeMap = startOfMethodFragment.varName2TypeMap;
 				endOfMethodFragment.getChildren().addAll(startOfMethodFragment.getChildren());
 				out.add(endOfMethodFragment);
 			}
@@ -175,7 +183,7 @@ public class BytecodeDecoder implements CodeDecoder
 		}
 	}
 
-	private AnnotationFragment createFromNode(AnnotationNode annotNode)
+	private static AnnotationFragment createFromNode(AnnotationNode annotNode)
 	{
 		AnnotationFragment annotFragment = new AnnotationFragment();
 		annotFragment.name = typesFromDesc(annotNode.desc)[0].replace("/", ".").replace("$", ".");
@@ -309,6 +317,12 @@ public class BytecodeDecoder implements CodeDecoder
 					out.add(loadConstantFragment);
 					toStore.push("2.0");
 				}
+				else if(insnNode.getOpcode() == ACONST_NULL)
+				{
+					LoadConstantFragment loadConstantFragment = new LoadConstantFragment();
+					loadConstantFragment.value = null;
+					out.add(loadConstantFragment);
+				}
 
 				else if(ainsnNode.getOpcode() == LRETURN || ainsnNode.getOpcode() == DRETURN || ainsnNode.getOpcode() == FRETURN || ainsnNode.getOpcode() == IRETURN || ainsnNode.getOpcode() == ARETURN)
 				{
@@ -344,7 +358,184 @@ public class BytecodeDecoder implements CodeDecoder
 					out.add(new DivFragment());
 					toStore.push(b + "/" + a);
 				}
+				else if(ainsnNode.getOpcode() == DREM || ainsnNode.getOpcode() == IREM || ainsnNode.getOpcode() == FREM || ainsnNode.getOpcode() == LREM)
+				{
+					out.add(new ModFragment());
+				}
+				
+				else if(ainsnNode.getOpcode() == D2I)
+				{
+					CastFragment cast = new CastFragment();
+					cast.from = "double";
+					cast.to = "int";
+					out.add(cast);
+				}
+				else if(ainsnNode.getOpcode() == I2D)
+				{
+					CastFragment cast = new CastFragment();
+					cast.from = "int";
+					cast.to = "double";
+					out.add(cast);
+				}
+				else if(ainsnNode.getOpcode() == I2F)
+				{
+					CastFragment cast = new CastFragment();
+					cast.from = "int";
+					cast.to = "float";
+					out.add(cast);
+				}
+				else if(ainsnNode.getOpcode() == I2L)
+				{
+					CastFragment cast = new CastFragment();
+					cast.from = "int";
+					cast.to = "long";
+					out.add(cast);
+				}
+				else if(ainsnNode.getOpcode() == I2C)
+				{
+					CastFragment cast = new CastFragment();
+					cast.from = "int";
+					cast.to = "char";
+					out.add(cast);
+				}
+				else if(ainsnNode.getOpcode() == F2I)
+				{
+					CastFragment cast = new CastFragment();
+					cast.from = "float";
+					cast.to = "int";
+					out.add(cast);
+				}
+				else if(ainsnNode.getOpcode() == F2D)
+				{
+					CastFragment cast = new CastFragment();
+					cast.from = "float";
+					cast.to = "double";
+					out.add(cast);
+				}
+				else if(ainsnNode.getOpcode() == F2L)
+				{
+					CastFragment cast = new CastFragment();
+					cast.from = "float";
+					cast.to = "long";
+					out.add(cast);
+				}
+				else if(ainsnNode.getOpcode() == L2D)
+				{
+					CastFragment cast = new CastFragment();
+					cast.from = "long";
+					cast.to = "double";
+					out.add(cast);
+				}
+				else if(ainsnNode.getOpcode() == L2I)
+				{
+					CastFragment cast = new CastFragment();
+					cast.from = "long";
+					cast.to = "int";
+					out.add(cast);
+				}
+				else if(ainsnNode.getOpcode() == L2F)
+				{
+					CastFragment cast = new CastFragment();
+					cast.from = "long";
+					cast.to = "float";
+					out.add(cast);
+				}
+				
+				else if(ainsnNode.getOpcode() == ISHR)
+				{
+					RightShiftFragment shrFragment = new RightShiftFragment();
+					shrFragment.signed = true;
+					shrFragment.type = "int";
+					out.add(shrFragment);
+				}
+				else if(ainsnNode.getOpcode() == IUSHR)
+				{
+					RightShiftFragment shrFragment = new RightShiftFragment();
+					shrFragment.signed = false;
+					shrFragment.type = "int";
+					out.add(shrFragment);
+				}
+				else if(ainsnNode.getOpcode() == LSHR)
+				{
+					RightShiftFragment shrFragment = new RightShiftFragment();
+					shrFragment.signed = true;
+					shrFragment.type = "long";
+					out.add(shrFragment);
+				}
+				else if(ainsnNode.getOpcode() == LUSHR)
+				{
+					RightShiftFragment shrFragment = new RightShiftFragment();
+					shrFragment.signed = false;
+					shrFragment.type = "long";
+					out.add(shrFragment);
+				}
 
+				else if(ainsnNode.getOpcode() == ISHL)
+				{
+					LeftShiftFragment shlFragment = new LeftShiftFragment();
+					shlFragment.signed = true;
+					shlFragment.type = "int";
+					out.add(shlFragment);
+				}
+				else if(ainsnNode.getOpcode() == LSHL)
+				{
+					LeftShiftFragment shlFragment = new LeftShiftFragment();
+					shlFragment.type = "long";
+					shlFragment.signed = true;
+					out.add(shlFragment);
+				}
+				
+				else if(ainsnNode.getOpcode() == IAND)
+				{
+					AndFragment andFragment = new AndFragment();
+					andFragment.type = "int";
+					out.add(andFragment);
+				}
+				else if(ainsnNode.getOpcode() == LAND)
+				{
+					AndFragment andFragment = new AndFragment();
+					andFragment.type = "long";
+					out.add(andFragment);
+				}
+				
+				else if(ainsnNode.getOpcode() == IOR)
+				{
+					OrFragment orFragment = new OrFragment();
+					orFragment.type = "int";
+					out.add(orFragment);
+				}
+				else if(ainsnNode.getOpcode() == LOR)
+				{
+					OrFragment orFragment = new OrFragment();
+					orFragment.type = "long";
+					out.add(orFragment);
+				}
+				
+				else if(ainsnNode.getOpcode() == IXOR)
+				{
+					XorFragment xorFragment = new XorFragment();
+					xorFragment.type = "int";
+					out.add(xorFragment);
+				}
+				else if(ainsnNode.getOpcode() == LXOR)
+				{
+					XorFragment xorFragment = new XorFragment();
+					xorFragment.type = "long";
+					out.add(xorFragment);
+				}
+				
+				else if(ainsnNode.getOpcode() == POP)
+				{
+					PopFragment popFrag = new PopFragment();
+					out.add(popFrag);
+				}
+				
+				else if(ainsnNode.getOpcode() == RETURN)
+				{
+					ReturnFragment returnFrag = new ReturnFragment();
+					out.add(returnFrag);
+				}
+				
 				else if(ainsnNode.getOpcode() == AASTORE || ainsnNode.getOpcode() == IASTORE || ainsnNode.getOpcode() == BASTORE || ainsnNode.getOpcode() == LASTORE || ainsnNode.getOpcode() == SASTORE || ainsnNode.getOpcode() == FASTORE || ainsnNode.getOpcode() == DASTORE || ainsnNode.getOpcode() == CASTORE)
 				{
 					ArrayStoreFragment storeFrag = new ArrayStoreFragment();
@@ -401,7 +592,7 @@ public class BytecodeDecoder implements CodeDecoder
 				{
 					if(labelNode.getLabel().equals(toJump.peek().getLabel()))
 					{
-						while(toJump.pop().getLabel().equals(labelNode.getLabel()))
+						while(!toJump.isEmpty() && toJump.pop().getLabel().equals(labelNode.getLabel()))
 						{
     						tab4 = tab4.replaceFirst("    ", "");
     						if(!hasJumpedTo.contains(currentLabel))
@@ -496,6 +687,18 @@ public class BytecodeDecoder implements CodeDecoder
 				{
 					String var = toStore.pop();
 					IfStatementFragment ifFrag = new IfStatementFragment();
+					frames++;
+					ifs.push(jumpNode.label.getLabel());
+					ifFrag.toJump = jumpNode.label.getLabel().toString();
+					out.add(ifFrag);
+					buffer.append(tab4 + "if(" + var + ")\n" + tab4 + "{\n");
+					toJump.push(jumpNode.label);
+					tab4 += "    ";
+				}
+				else if(jumpNode.getOpcode() == IFNE)
+				{
+					String var = toStore.pop();
+					IfNotStatementFragment ifFrag = new IfNotStatementFragment();
 					frames++;
 					ifs.push(jumpNode.label.getLabel());
 					ifFrag.toJump = jumpNode.label.getLabel().toString();
@@ -682,11 +885,17 @@ public class BytecodeDecoder implements CodeDecoder
 				{
 					int size = Integer.parseInt(toStore.pop());
 					NewArrayFragment newArray = new NewArrayFragment();
-					newArray.size = size;
 					newArray.type = operand.replace("/", ".");
 					out.add(newArray);
 					String s = translateToJLSL(operand.replace("/", ".")) + "[" + size + "]";
 					toStore.push(s);
+				}
+				else if(ainsnNode.getOpcode() == CHECKCAST)
+				{
+					CastFragment cast = new CastFragment();
+					cast.from = "java.lang.Object";
+					cast.to = operand.replace("/", ".");
+					out.add(cast);
 				}
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.MULTIANEWARRAY_INSN)
@@ -695,7 +904,6 @@ public class BytecodeDecoder implements CodeDecoder
 				NewMultiArrayFragment multiFrag = new NewMultiArrayFragment();
 				multiFrag.type = typesFromDesc(multiArrayNode.desc)[0].replace("[]", "");
 				multiFrag.dimensions = multiArrayNode.dims;
-				multiFrag.sizes = new int[multiFrag.dimensions];
 				String operand = multiArrayNode.desc;
 				String desc = translateToJLSL(translateToJLSL(operand).replace("[]", ""));
 				String s = desc;
@@ -708,7 +916,6 @@ public class BytecodeDecoder implements CodeDecoder
 				for(int dim = 0; dim < multiArrayNode.dims; dim++)
 				{
 					s += "[" + list.get(list.size() - dim - 1) + "]";
-					multiFrag.sizes[dim] = Integer.parseInt(list.get(list.size() - dim - 1));
 				}
 				out.add(multiFrag);
 				toStore.push(s);
@@ -746,6 +953,14 @@ public class BytecodeDecoder implements CodeDecoder
 						else margs = s + ", " + margs;
 					}
 					String n = methodNode.name;
+					MethodCallFragment methodFragment = new MethodCallFragment();
+					methodFragment.isSpecial = true;
+					methodFragment.methodName = n;
+					methodFragment.methodOwner = methodNode.owner.replace("/", ".");
+					methodFragment.argumentsTypes = margsArray;
+					methodFragment.returnType = typesFromDesc(desc.substring(desc.indexOf("(")+1))[0];
+					out.add(methodFragment);
+					addAnnotFragments(methodNode.owner, n, methodNode.desc, methodFragment);
 					if(margs == null) margs = "";
 					if(methodNode.name.equals("<init>"))
 					{
@@ -775,6 +990,14 @@ public class BytecodeDecoder implements CodeDecoder
 						else margs = s + ", " + margs;
 					}
 					String n = methodNode.name;
+					MethodCallFragment methodFragment = new MethodCallFragment();
+					methodFragment.isSpecial = false;
+					methodFragment.methodName = n;
+					methodFragment.methodOwner = methodNode.owner.replace("/", ".");
+					methodFragment.argumentsTypes = margsArray;
+					methodFragment.returnType = typesFromDesc(desc.substring(desc.indexOf("(")+1))[0];
+					out.add(methodFragment);
+					addAnnotFragments(methodNode.owner, n, methodNode.desc, methodFragment);
 					AnnotationNode substituteAnnotation = getAnnotNode(methodNode.owner, n, methodNode.desc, Substitute.class.getCanonicalName());
 					boolean ownerBefore = false;
 					boolean parenthesis = true;
@@ -962,6 +1185,35 @@ public class BytecodeDecoder implements CodeDecoder
 		return true;
 	}
 
+	@SuppressWarnings("unchecked")
+	private static void addAnnotFragments(String methodClass, String methodName, String methodDesc, MethodCallFragment fragment)
+	{
+		try
+		{
+			ClassReader reader = new ClassReader(BytecodeDecoder.class.getResourceAsStream("/" + methodClass.replace(".", "/") + ".class"));
+			ClassNode classNode = new ClassNode();
+			reader.accept(classNode, 0);
+			List<MethodNode> methodList = classNode.methods;
+			for(MethodNode methodNode : methodList)
+			{
+				if(methodNode.name.equals(methodName) && methodNode.desc.equals(methodDesc))
+				{
+					List<AnnotationNode> annots = methodNode.visibleAnnotations;
+					if(annots != null)
+						for(AnnotationNode annot : annots)
+						{
+							fragment.addChild(createFromNode(annot));
+						}
+					else return;
+				}
+			}
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
 	@SuppressWarnings("unchecked")
 	private static AnnotationNode getAnnotNode(String methodClass, String methodName, String methodDesc, String annotationClass)
 	{
