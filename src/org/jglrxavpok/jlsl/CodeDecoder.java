@@ -4,8 +4,10 @@ import java.util.List;
 
 import org.jglrxavpok.jlsl.fragments.*;
 
-public interface CodeDecoder
+public abstract class CodeDecoder
 {
 
-	public void handleClass(Object data, List<CodeFragment> out);
+	public JLSLContext context = null;
+
+	public abstract void handleClass(Object data, List<CodeFragment> out);
 }

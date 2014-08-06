@@ -12,7 +12,7 @@ import org.objectweb.asm.*;
 import org.objectweb.asm.tree.*;
 import org.objectweb.asm.util.*;
 
-public class BytecodeDecoder implements CodeDecoder
+public class BytecodeDecoder extends CodeDecoder
 {
 
 	public static final boolean DEBUG = true;
@@ -63,6 +63,8 @@ public class BytecodeDecoder implements CodeDecoder
 	{
 		try
 		{
+			if(data == null)
+				return;
 			ClassReader reader;
 			if(data instanceof byte[])
 			{
@@ -141,6 +143,7 @@ public class BytecodeDecoder implements CodeDecoder
 				List<LocalVariableNode> localVariables = node.localVariables;
 				StartOfMethodFragment startOfMethodFragment = new StartOfMethodFragment();
 				startOfMethodFragment.name = node.name;
+				startOfMethodFragment.owner = classNode.name.replace("/", ".");
 				startOfMethodFragment.returnType = typesFromDesc(node.desc.substring(node.desc.indexOf(")")+1))[0];
 				for(LocalVariableNode var : localVariables)
 				{
@@ -166,6 +169,7 @@ public class BytecodeDecoder implements CodeDecoder
 				handleMethodNode(node, toStore, initialized, startOfMethodFragment.varTypeMap, startOfMethodFragment.varNameMap, out);
 				EndOfMethodFragment endOfMethodFragment = new EndOfMethodFragment();
 				endOfMethodFragment.name = startOfMethodFragment.name;
+				endOfMethodFragment.owner = startOfMethodFragment.owner;
 				endOfMethodFragment.argumentsNames = startOfMethodFragment.argumentsNames;
 				endOfMethodFragment.argumentsTypes = startOfMethodFragment.argumentsTypes;
 				endOfMethodFragment.returnType = startOfMethodFragment.returnType;
@@ -536,6 +540,19 @@ public class BytecodeDecoder implements CodeDecoder
 					out.add(returnFrag);
 				}
 				
+				else if(ainsnNode.getOpcode() == DUP)
+				{
+					DuplicateFragment duplicate = new DuplicateFragment();
+					duplicate.wait = 1;
+					out.add(duplicate);
+				}
+				else if(ainsnNode.getOpcode() == DUP2_X1)
+				{
+					DuplicateFragment duplicate = new DuplicateFragment();
+					duplicate.wait = 1;
+					out.add(duplicate);
+				}
+				
 				else if(ainsnNode.getOpcode() == AASTORE || ainsnNode.getOpcode() == IASTORE || ainsnNode.getOpcode() == BASTORE || ainsnNode.getOpcode() == LASTORE || ainsnNode.getOpcode() == SASTORE || ainsnNode.getOpcode() == FASTORE || ainsnNode.getOpcode() == DASTORE || ainsnNode.getOpcode() == CASTORE)
 				{
 					ArrayStoreFragment storeFrag = new ArrayStoreFragment();
@@ -838,7 +855,7 @@ public class BytecodeDecoder implements CodeDecoder
 					String val = toStore.pop();
 					String owner = toStore.pop();
 					PutFieldFragment putFieldFrag = new PutFieldFragment();
-					putFieldFrag.fieldDesc = typesFromDesc(fieldNode.desc)[0];
+					putFieldFrag.fieldType = typesFromDesc(fieldNode.desc)[0];
 					putFieldFrag.fieldName = fieldNode.name;
 					out.add(putFieldFrag);
 				}

@@ -5,12 +5,21 @@ import java.util.*;
 
 import org.jglrxavpok.jlsl.*;
 import org.jglrxavpok.jlsl.fragments.*;
-import org.jglrxavpok.jlsl.glsl.GLSL.*;
+import org.jglrxavpok.jlsl.glsl.GLSL.Attribute;
+import org.jglrxavpok.jlsl.glsl.GLSL.Extensions;
+import org.jglrxavpok.jlsl.glsl.GLSL.In;
+import org.jglrxavpok.jlsl.glsl.GLSL.Layout;
+import org.jglrxavpok.jlsl.glsl.GLSL.Out;
+import org.jglrxavpok.jlsl.glsl.GLSL.Substitute;
+import org.jglrxavpok.jlsl.glsl.GLSL.Uniform;
+import org.jglrxavpok.jlsl.glsl.fragments.*;
 
-public class GLSLEncoder implements CodeEncoder
+public class GLSLEncoder extends CodeEncoder
 {
 
+	public static final boolean DEBUG = true;
 	private static HashMap<String, String> translations = new HashMap<String, String>();
+	private static HashMap<String, String> conversionsToStructs = new HashMap<String, String>();
 
 	static
 	{
@@ -23,8 +32,20 @@ public class GLSLEncoder implements CodeEncoder
 		setGLSLTranslation(Mat2.class.getCanonicalName(), "mat2");
 		setGLSLTranslation(Mat3.class.getCanonicalName(), "mat3");
 		setGLSLTranslation(Mat4.class.getCanonicalName(), "mat4");
+		
+		addToStructConversion(Vertex.class.getCanonicalName(), "VertexTest");
 	}
 
+	public static void addToStructConversion(String javaType, String structName)
+	{
+		conversionsToStructs.put(javaType, structName);
+	}
+	
+	public static boolean hasStructAttached(String javaType)
+	{
+		return conversionsToStructs.containsKey(javaType);
+	}
+	
 	public static void setGLSLTranslation(String javaType, String glslType)
 	{
 		translations.put(javaType, glslType);
@@ -37,6 +58,8 @@ public class GLSLEncoder implements CodeEncoder
 
 	private static String toGLSL(String type)
 	{
+		if(type == null)
+			return "";
 		String copy = type;
 		String end = "";
 		while(copy.contains("[]"))
@@ -49,8 +72,10 @@ public class GLSLEncoder implements CodeEncoder
 		{ 
 			return translations.get(type) + end;
 		}
-		String[] types = typesFromDesc(type, 0);
-		if(types.length != 0) return types[0]+end;
+		if(conversionsToStructs.containsKey(type))
+		{
+			return conversionsToStructs.get(type) + end;
+		}
 		return type+end;
 	}
 	
@@ -63,116 +88,6 @@ public class GLSLEncoder implements CodeEncoder
 		}
 		return s;
 	}
-
-	private static String[] typesFromDesc(String desc, int startPos)
-	{
-		boolean parsingObjectClass = false;
-		boolean parsingArrayClass = false;
-		ArrayList<String> types = new ArrayList<String>();
-		String currentObjectClass = null;
-		String currentArrayClass = null;
-		int dims = 1;
-		for(int i = startPos; i < desc.length(); i++)
-		{
-			char c = desc.charAt(i);
-
-			if(!parsingObjectClass && !parsingArrayClass)
-			{
-				if(c == '[')
-				{
-					parsingArrayClass = true;
-					currentArrayClass = "";
-				}
-				else if(c == 'L')
-				{
-					parsingObjectClass = true;
-					currentObjectClass = "";
-				}
-				else if(c == 'I')
-				{
-					types.add("int");
-				}
-				else if(c == 'D')
-				{
-					types.add("double");
-				}
-				else if(c == 'B')
-				{
-					types.add("byte");
-				}
-				else if(c == 'Z')
-				{
-					types.add("boolean");
-				}
-				else if(c == 'V')
-				{
-					types.add("void");
-				}
-				else if(c == 'J')
-				{
-					types.add("long");
-				}
-				else if(c == 'C')
-				{
-					types.add("char");
-				}
-				else if(c == 'F')
-				{
-					types.add("float");
-				}
-				else if(c == 'S') // TODO: To check
-				{
-					types.add("short");
-				}
-			}
-			else if(parsingObjectClass)
-			{
-				if(c == '/')
-					c = '.';
-				else if(c == ';')
-				{
-					parsingObjectClass = false;
-					types.add(currentObjectClass);
-					continue;
-				}
-				currentObjectClass += c;
-			}
-			else if(parsingArrayClass)
-			{
-				if(c == '[')
-				{
-					dims++;
-					continue;
-				}
-				if(c == '/') c = '.';
-				if(c == 'L')
-					continue;
-				else if(c == ';')
-				{
-					parsingArrayClass = false;
-					String dim = "";
-					for(int ii = 0; ii < dims; ii++)
-						dim += "[]";
-					types.add(currentArrayClass + dim);
-					dims = 1;
-					continue;
-				}
-				currentArrayClass += c;
-			}
-		}
-		if(parsingObjectClass)
-		{
-			types.add(currentObjectClass);
-		}
-		if(parsingArrayClass)
-		{
-			String dim = "";
-			for(int ii = 0; ii < dims; ii++)
-				dim += "[]";
-			types.add(currentArrayClass + dim);
-		}
-		return types.toArray(new String[0]);
-	}
 	
 	private int indentation;
 	private int glslversion;
@@ -184,9 +99,19 @@ public class GLSLEncoder implements CodeEncoder
 	private Stack<String> stack;
 	private Stack<String> typesStack;
 	private HashMap<String, String> name2type;
+	private HashMap<Object, String> constants;
+	private HashMap<String, String> methodReplacements;
 	private ArrayList<String> initialized;
 	private StartOfMethodFragment currentMethod;
 	private boolean convertNumbersToChars;
+	private ArrayList<String> loadedStructs = new ArrayList<String>();
+	private int currentRequestType;
+	private static final int STRUCT = 1;
+	private Object requestData;
+	private List<CodeFragment> input;
+	private boolean allowedToPrint;
+	private PrintWriter output;
+	private Stack<CodeFragment> waiting;
 
 	public GLSLEncoder(int glslversion)
 	{
@@ -196,6 +121,9 @@ public class GLSLEncoder implements CodeEncoder
 		typesStack = new Stack<String>();
 		initialized = new ArrayList<String>();
 		name2type = new HashMap<String, String>();
+		constants = new HashMap<Object, String>();
+		methodReplacements = new HashMap<String, String>();
+		waiting = new Stack<CodeFragment>();
 	}
 	
 	public void convertNumbersToChar(boolean convert)
@@ -204,170 +132,379 @@ public class GLSLEncoder implements CodeEncoder
 	}
 
 	@Override
+	public void onRequestResult(ArrayList<CodeFragment> fragments)
+	{
+		if(currentRequestType == STRUCT)
+		{
+			StructFragment currentStruct = (StructFragment) requestData;
+			HashMap<String, String> fields = currentStruct.fields;
+			for(int i = 0;i<fragments.size();i++)
+			{
+				CodeFragment fragment = fragments.get(i);
+				if(fragment.getClass() == FieldFragment.class)
+				{
+					FieldFragment fieldFrag = (FieldFragment)fragment;
+					fields.put(fieldFrag.name, fieldFrag.type);
+					fragment.forbiddenToPrint = true;
+				}
+				
+				currentStruct.addChild(fragment);
+			}
+		}
+	}
+	
+	@Override
 	public void createSourceCode(List<CodeFragment> in, PrintWriter out)
 	{
-		out.println("#version " + glslversion);
+		this.input = in;
+		interpret(in);
+		println("#version " + glslversion);
 		for(int index = 0; index < in.size(); index++)
 		{
 			CodeFragment fragment = in.get(index);
-			if(fragment.getClass() == NewClassFragment.class)
+			this.output = out;
+			this.allowedToPrint = !fragment.forbiddenToPrint;
+			if(!waiting.isEmpty())
 			{
-				handleClassFragment((NewClassFragment)fragment, in, index, out);
-				currentClass = (NewClassFragment)fragment;
+				handleCodeFragment(waiting.pop(), index, in, out);
 			}
-			else if(fragment.getClass() == FieldFragment.class)
+			handleCodeFragment(fragment, index, in, out);
+		}
+		out.flush();
+	}
+
+	private void handleCodeFragment(CodeFragment fragment, int index, List<CodeFragment> in, PrintWriter out)
+	{
+		if(fragment.getClass() == NewClassFragment.class)
+		{
+			handleClassFragment((NewClassFragment)fragment, in, index, out);
+			currentClass = (NewClassFragment)fragment;
+		}
+		else if(fragment.getClass() == FieldFragment.class)
+		{
+			handleFieldFragment((FieldFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == StartOfMethodFragment.class)
+		{
+			handleStartOfMethodFragment((StartOfMethodFragment)fragment, in, index, out);
+			this.currentMethod = (StartOfMethodFragment)fragment;
+		}
+		else if(fragment.getClass() == EndOfMethodFragment.class)
+		{
+			handleEndOfMethodFragment((EndOfMethodFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == LineNumberFragment.class)
+		{
+			currentLine = ((LineNumberFragment)fragment).line;
+		}
+		else if(fragment.getClass() == NewArrayFragment.class)
+		{
+			handleNewArrayFragment((NewArrayFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == NewMultiArrayFragment.class)
+		{
+			handleNewMultiArrayFragment((NewMultiArrayFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == PutFieldFragment.class)
+		{
+			handlePutFieldFragment((PutFieldFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == GetFieldFragment.class)
+		{
+			handleGetFieldFragment((GetFieldFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == BiPushFragment.class)
+		{
+			handleBiPushFragment((BiPushFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == NewPrimitiveArrayFragment.class)
+		{
+			handleNewPrimitiveArrayFragment((NewPrimitiveArrayFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == LoadVariableFragment.class)
+		{
+			handleLoadVariableFragment((LoadVariableFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == StoreVariableFragment.class)
+		{
+			handleStoreVariableFragment((StoreVariableFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == LdcFragment.class)
+		{
+			handleLdcFragment((LdcFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == LoadConstantFragment.class)
+		{
+			handleLoadConstantFragment((LoadConstantFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == ReturnValueFragment.class)
+		{
+			handleReturnValueFragment((ReturnValueFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == AddFragment.class)
+		{
+			handleAddFragment((AddFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == SubFragment.class)
+		{
+			handleSubFragment((SubFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == MulFragment.class)
+		{
+			handleMulFragment((MulFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == DivFragment.class)
+		{
+			handleDivFragment((DivFragment)fragment, in, index, out);
+		}
+		
+		else if(fragment.getClass() == ArrayOfArrayLoadFragment.class)
+		{
+			handleArrayOfArrayLoadFragment((ArrayOfArrayLoadFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == ArrayStoreFragment.class)
+		{
+			handleArrayStoreFragment((ArrayStoreFragment)fragment, in, index, out);
+		}
+		
+		else if(fragment.getClass() == IfStatementFragment.class)
+		{
+			handleIfStatementFragment((IfStatementFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == EndOfBlockFragment.class)
+		{
+			handleEndOfBlockFragment((EndOfBlockFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == ElseStatementFragment.class)
+		{
+			handleElseStatementFragment((ElseStatementFragment)fragment, in, index, out);
+		}
+		
+		else if(fragment.getClass() == MethodCallFragment.class)
+		{
+			handleMethodCallFragment((MethodCallFragment)fragment, in, index, out);
+		}
+		
+		else if(fragment.getClass() == ModFragment.class)
+		{
+			handleModFragment((ModFragment)fragment, in, index, out);
+		}
+		
+		else if(fragment.getClass() == CastFragment.class)
+		{
+			handleCastFragment((CastFragment)fragment, in, index, out);
+		}
+		
+		else if(fragment.getClass() == LeftShiftFragment.class)
+		{
+			handleLeftShiftFragment((LeftShiftFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == RightShiftFragment.class)
+		{
+			handleRightShiftFragment((RightShiftFragment)fragment, in, index, out);
+		}
+		
+		else if(fragment.getClass() == AndFragment.class)
+		{
+			handleAndFragment((AndFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == OrFragment.class)
+		{
+			handleOrFragment((OrFragment)fragment, in, index, out);
+		}
+		else if(fragment.getClass() == XorFragment.class)
+		{
+			handleXorFragment((XorFragment)fragment, in, index, out);
+		}
+		
+		else if(fragment.getClass() == IfNotStatementFragment.class)
+		{
+			handleIfNotStatementFragment((IfNotStatementFragment)fragment, in, index, out);
+		}
+		
+		else if(fragment.getClass() == PopFragment.class)
+		{
+			handlePopFragment((PopFragment)fragment, in, index, out);
+		}
+		
+		else if(fragment.getClass() == ReturnFragment.class)
+		{
+			handleReturnFragment((ReturnFragment)fragment, in, index, out);
+		}
+		
+		else if(fragment.getClass() == DuplicateFragment.class)
+		{
+			handleDuplicateFragment((DuplicateFragment)fragment, in, index, out);
+		}
+		
+		
+		
+		
+		
+		else if(fragment.getClass() == StructFragment.class)
+		{
+			handleStructFragment((StructFragment)fragment, in, index, out);
+		}
+	}
+
+	private void handleStructFragment(StructFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
+	{
+		println(getIndent()+"struct "+fragment.name);
+		println(getIndent()+"{");
+		indentation++;
+		Iterator<String> it = fragment.fields.keySet().iterator();
+		while(it.hasNext())
+		{
+			String name = it.next();
+			String type = toGLSL(fragment.fields.get(name));
+			println(getIndent()+type+tab+name+";");
+		}
+		indentation--;
+		println(getIndent()+"};");
+		
+		StartOfMethodFragment currentMethod = null;
+		for(int i = 0;i<fragment.getChildren().size();i++)
+		{
+			CodeFragment fragment1 = fragment.getChildren().get(i);
+			this.output = out;
+			this.allowedToPrint = !fragment1.forbiddenToPrint;
+			if(fragment1 instanceof StartOfMethodFragment)
 			{
-				handleFieldFragment((FieldFragment)fragment, in, index, out);
+				StartOfMethodFragment method = (StartOfMethodFragment)fragment1;
+				currentMethod = method;
+				String oldName = currentMethod.name;
+				if(currentMethod.name.equals("<init>"))
+				{
+					currentMethod.name = "new";
+				}
+				currentMethod.name = fragment.name+"_"+currentMethod.name;
+				String instanceName = (""+fragment.name.charAt(0)).toLowerCase()+fragment.name.substring(1)+"Instance";
+				method.argumentsNames.add(0, instanceName);
+				method.argumentsTypes.add(0, fragment.name);
+				method.varNameMap.put(0, instanceName);
+				String key = toGLSL(currentMethod.owner)+"."+oldName;
+				methodReplacements.put(key, currentMethod.name);
+				if(DEBUG && fragment1.getClass() == StartOfMethodFragment.class)
+				{
+					System.out.println("GLSLEncoder > Mapped "+key+" to "+currentMethod.name);
+				}
 			}
-			else if(fragment.getClass() == StartOfMethodFragment.class)
+			else if(fragment1 instanceof LoadVariableFragment)
 			{
-				handleStartOfMethodFragment((StartOfMethodFragment)fragment, in, index, out);
-				this.currentMethod = (StartOfMethodFragment)fragment;
+				LoadVariableFragment var = (LoadVariableFragment)fragment1;
+				var.variableName = currentMethod.varNameMap.get(var.variableIndex);
 			}
-			else if(fragment.getClass() == EndOfMethodFragment.class)
+			else if(fragment1 instanceof StoreVariableFragment)
 			{
-				handleEndOfMethodFragment((EndOfMethodFragment)fragment, in, index, out);
+				StoreVariableFragment var = (StoreVariableFragment)fragment1;
+				var.variableName = currentMethod.varNameMap.get(var.variableIndex);
 			}
-			else if(fragment.getClass() == LineNumberFragment.class)
+			if(!waiting.isEmpty())
 			{
-				currentLine = ((LineNumberFragment)fragment).line;
+				handleCodeFragment(waiting.pop(), index, in, out);
 			}
-			else if(fragment.getClass() == NewArrayFragment.class)
+			handleCodeFragment(fragment1, i, fragment.getChildren(), out);
+		}
+	}
+
+	private void handleDuplicateFragment(DuplicateFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
+	{
+		if(fragment.wait > 0)
+		{
+			waiting.add(fragment);
+			fragment.wait--;
+		}
+		else
+		{
+    		String a = stack.pop();
+    		stack.push(a);
+    		stack.push(a);
+		}
+	}
+
+	private void interpret(List<CodeFragment> in)
+	{
+		Stack<String> copy = stack;
+		Stack<String> tmpstack = new Stack<String>();
+		stack = tmpstack;
+		StartOfMethodFragment currentMethod = null;
+		PrintWriter nullPrinter = new PrintWriter(new StringWriter());
+		for(int i = 0;i<in.size();i++)
+		{
+			boolean dontHandle = false;
+			CodeFragment fragment = in.get(i);
+			if(fragment.getClass() == StartOfMethodFragment.class)
 			{
-				handleNewArrayFragment((NewArrayFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == NewMultiArrayFragment.class)
-			{
-				handleNewMultiArrayFragment((NewMultiArrayFragment)fragment, in, index, out);
+				currentMethod = (StartOfMethodFragment) fragment;
 			}
 			else if(fragment.getClass() == PutFieldFragment.class)
 			{
-				handlePutFieldFragment((PutFieldFragment)fragment, in, index, out);
+				PutFieldFragment storeFrag = (PutFieldFragment)fragment;
+				if(currentMethod != null && currentMethod.name.equals("<init>"))
+				{
+					for(int ii = 0;ii<in.size();ii++)
+					{
+						CodeFragment fragment1 = in.get(ii);
+						if(fragment1.getClass() == FieldFragment.class)
+						{
+							FieldFragment fieldFrag = (FieldFragment)fragment1;
+							if(hasStructAttached(fieldFrag.type) && !loadedStructs.contains(fieldFrag.type))
+							{
+								loadedStructs.add(fieldFrag.type);
+								StructFragment struct = new StructFragment();
+								struct.name = conversionsToStructs.get(fieldFrag.type);
+								HashMap<String, String> fields = new HashMap<String, String>();
+								struct.fields = fields;
+								currentRequestType = STRUCT;
+								requestData = struct;
+								String s = "/"+fieldFrag.type.replace(".", "/")+".class";
+								context.requestAnalysisForEncoder(GLSLEncoder.class.getResourceAsStream(s));
+								in.add(ii, struct);
+								currentRequestType = 0;
+								ii++;
+							}
+							if(fieldFrag.name.equals(storeFrag.fieldName) && fieldFrag.type.equals(storeFrag.fieldType))
+							{
+								fieldFrag.initialValue = stack.pop();
+								dontHandle = true;
+								storeFrag.forbiddenToPrint = true;
+								break;
+							}
+						}
+					}
+				}
 			}
-			else if(fragment.getClass() == GetFieldFragment.class)
+			if(!dontHandle)
 			{
-				handleGetFieldFragment((GetFieldFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == BiPushFragment.class)
-			{
-				handleBiPushFragment((BiPushFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == NewPrimitiveArrayFragment.class)
-			{
-				handleNewPrimitiveArrayFragment((NewPrimitiveArrayFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == LoadVariableFragment.class)
-			{
-				handleLoadVariableFragment((LoadVariableFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == StoreVariableFragment.class)
-			{
-				handleStoreVariableFragment((StoreVariableFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == LdcFragment.class)
-			{
-				handleLdcFragment((LdcFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == LoadConstantFragment.class)
-			{
-				handleLoadConstantFragment((LoadConstantFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == ReturnValueFragment.class)
-			{
-				handleReturnValueFragment((ReturnValueFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == AddFragment.class)
-			{
-				handleAddFragment((AddFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == SubFragment.class)
-			{
-				handleSubFragment((SubFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == MulFragment.class)
-			{
-				handleMulFragment((MulFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == DivFragment.class)
-			{
-				handleDivFragment((DivFragment)fragment, in, index, out);
-			}
-			
-			else if(fragment.getClass() == ArrayOfArrayLoadFragment.class)
-			{
-				handleArrayOfArrayLoadFragment((ArrayOfArrayLoadFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == ArrayStoreFragment.class)
-			{
-				handleArrayStoreFragment((ArrayStoreFragment)fragment, in, index, out);
-			}
-			
-			else if(fragment.getClass() == IfStatementFragment.class)
-			{
-				handleIfStatementFragment((IfStatementFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == EndOfBlockFragment.class)
-			{
-				handleEndOfBlockFragment((EndOfBlockFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == ElseStatementFragment.class)
-			{
-				handleElseStatementFragment((ElseStatementFragment)fragment, in, index, out);
-			}
-			
-			else if(fragment.getClass() == MethodCallFragment.class)
-			{
-				handleMethodCallFragment((MethodCallFragment)fragment, in, index, out);
-			}
-			
-			else if(fragment.getClass() == ModFragment.class)
-			{
-				handleModFragment((ModFragment)fragment, in, index, out);
-			}
-			
-			else if(fragment.getClass() == CastFragment.class)
-			{
-				handleCastFragment((CastFragment)fragment, in, index, out);
-			}
-			
-			else if(fragment.getClass() == LeftShiftFragment.class)
-			{
-				handleLeftShiftFragment((LeftShiftFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == RightShiftFragment.class)
-			{
-				handleRightShiftFragment((RightShiftFragment)fragment, in, index, out);
-			}
-			
-			else if(fragment.getClass() == AndFragment.class)
-			{
-				handleAndFragment((AndFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == OrFragment.class)
-			{
-				handleOrFragment((OrFragment)fragment, in, index, out);
-			}
-			else if(fragment.getClass() == XorFragment.class)
-			{
-				handleXorFragment((XorFragment)fragment, in, index, out);
-			}
-			
-			else if(fragment.getClass() == IfNotStatementFragment.class)
-			{
-				handleIfNotStatementFragment((IfNotStatementFragment)fragment, in, index, out);
-			}
-			
-			else if(fragment.getClass() == PopFragment.class)
-			{
-				handlePopFragment((PopFragment)fragment, in, index, out);
-			}
-			
-			else if(fragment.getClass() == ReturnFragment.class)
-			{
-				handleReturnFragment((ReturnFragment)fragment, in, index, out);
+				if(!waiting.isEmpty())
+				{
+					handleCodeFragment(waiting.pop(), i, in, nullPrinter);
+				}
+				handleCodeFragment(fragment, i, in, nullPrinter);
 			}
 		}
-		out.flush();
+		
+		waiting.clear();
+		currentLine = 0;
+		indentation = 0;
+		initialized.clear();
+		name2type.clear();
+		currentClass = null;
+		typesStack.clear();
+		extensions.clear();
+		constants.clear();
+		stack = copy;
+	}
+	
+	private void println()
+	{
+		println("");
+	}
+	
+	private void println(String s)
+	{
+		if(allowedToPrint)
+			output.println(s);
 	}
 
 	private void handleReturnFragment(ReturnFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
@@ -378,13 +515,13 @@ public class GLSLEncoder implements CodeEncoder
 		}
 		else
 		{
-			out.println(getIndent()+"return;"+getEndOfLine(currentLine));
+			println(getIndent()+"return;"+getEndOfLine(currentLine));
 		}
 	}
 
 	private void handlePopFragment(PopFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
 	{
-		out.println(getIndent()+stack.pop()+";"+getEndOfLine(currentLine));
+		println(getIndent()+stack.pop()+";"+getEndOfLine(currentLine));
 	}
 
 	private int countChar(String str, char c)
@@ -399,8 +536,8 @@ public class GLSLEncoder implements CodeEncoder
 	private void handleIfNotStatementFragment(IfNotStatementFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
 	{
 		String condition = stack.pop();
-		out.println(getIndent()+"if(!"+condition+")"+getEndOfLine(currentLine));
-		out.println(getIndent()+"{");
+		println(getIndent()+"if(!"+condition+")"+getEndOfLine(currentLine));
+		println(getIndent()+"{");
 		indentation++;	
 	}
 
@@ -456,10 +593,13 @@ public class GLSLEncoder implements CodeEncoder
 	{
 		String s = "";
 		String n = fragment.methodName;
-		if(fragment.isSpecial && n.equals("<init>"))
+		if(methodReplacements.containsKey(toGLSL(fragment.methodOwner)+"."+fragment.methodName))
 		{
-			stack.pop();
-			return;
+			n = methodReplacements.get(toGLSL(fragment.methodOwner)+"."+fragment.methodName);
+		}
+		if(fragment.isSpecial && currentMethod.name.equals("<init>") && fragment.methodOwner.equals(currentClass.superclass))
+		{
+			this.allowedToPrint = false;
 		}
 		if(n.equals("<init>"))
 		{
@@ -467,9 +607,10 @@ public class GLSLEncoder implements CodeEncoder
 		}
 		s+=n+"(";
 		ArrayList<String> args = new ArrayList<String>();
-		for(String type : fragment.argumentsTypes)
+		for(@SuppressWarnings("unused") String type : fragment.argumentsTypes)
 		{
-			args.add(stack.pop());
+			String arg = stack.pop();
+			args.add(arg);
 		}
 		String argsStr = "";
 		for(int i = 0;i<args.size();i++)
@@ -503,37 +644,34 @@ public class GLSLEncoder implements CodeEncoder
 			else
 				s = owner+n+(parenthesis ? "(" : "")+argsStr+(parenthesis ? ")" : "");
 			if(fragment.returnType.equals("void"))
-				out.println(getIndent()+s+";"+getEndOfLine(currentLine));
+				println(getIndent()+s+";"+getEndOfLine(currentLine));
 			else
 				stack.push("("+s+")");
 		}
 		else
 		{
-			if(fragment.returnType.equals("void"))
-				out.println(getIndent()+s+";"+getEndOfLine(currentLine));
-			else
-				stack.push(s);
+			stack.push(s);
 		}
 	}
 
 	private void handleElseStatementFragment(ElseStatementFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
 	{
-		out.println(getIndent()+"else"+getEndOfLine(currentLine));
-		out.println(getIndent()+"{");
+		println(getIndent()+"else"+getEndOfLine(currentLine));
+		println(getIndent()+"{");
 		indentation++;
 	}
 
 	private void handleEndOfBlockFragment(EndOfBlockFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
 	{
 		indentation--;
-		out.println(getIndent()+"}");
+		println(getIndent()+"}");
 	}
 
 	private void handleIfStatementFragment(IfStatementFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
 	{
 		String condition = stack.pop();
-		out.println(getIndent()+"if("+condition+")"+getEndOfLine(currentLine));
-		out.println(getIndent()+"{");
+		println(getIndent()+"if("+condition+")"+getEndOfLine(currentLine));
+		println(getIndent()+"{");
 		indentation++;
 	}
 
@@ -566,7 +704,7 @@ public class GLSLEncoder implements CodeEncoder
 				toAdd = "[" + name + "]";
 			}
 		}
-		out.println(getIndent()+ result + ";" + getEndOfLine(currentLine));
+		println(getIndent()+ result + ";" + getEndOfLine(currentLine));
 	}
 
 	private void handleArrayOfArrayLoadFragment(ArrayOfArrayLoadFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
@@ -611,7 +749,7 @@ public class GLSLEncoder implements CodeEncoder
 
 	private void handleReturnValueFragment(ReturnValueFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
 	{
-		out.println(getIndent()+"return"+tab+stack.pop()+";"+getEndOfLine(currentLine));
+		println(getIndent()+"return"+tab+stack.pop()+";"+getEndOfLine(currentLine));
 	}
 
 	private void handleLoadConstantFragment(LoadConstantFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
@@ -621,20 +759,27 @@ public class GLSLEncoder implements CodeEncoder
 
 	private void handleLdcFragment(LdcFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
 	{
-		stack.push(""+fragment.value);
+		if(constants.containsKey(fragment.value))
+			stack.push(""+constants.get(fragment.value));
+		else
+			stack.push(""+fragment.value);
 	}
 
 	private void handleStoreVariableFragment(StoreVariableFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
 	{
 		String value = stack.pop();
+		if(value.startsWith("(") && value.endsWith(")"))
+		{
+			value = value.substring(1, value.length()-1);
+		}
 		if(value.equals(fragment.variableName+"+1"))
 		{
-			out.println(getIndent() + fragment.variableName + "++;" + getEndOfLine(currentLine));
+			println(getIndent() + fragment.variableName + "++;" + getEndOfLine(currentLine));
 			return;
 		}
 		else if(value.equals(fragment.variableName+"-1"))
 		{
-			out.println(getIndent() + fragment.variableName + "--;" + getEndOfLine(currentLine));
+			println(getIndent() + fragment.variableName + "--;" + getEndOfLine(currentLine));
 			return;
 		}
 		String glslType = toGLSL(currentMethod.varName2TypeMap.get(fragment.variableName));
@@ -661,12 +806,12 @@ public class GLSLEncoder implements CodeEncoder
 		}
 		if(initialized.contains(fragment.variableName))
 		{
-			out.println(getIndent() + fragment.variableName + " = " + value + ";" + getEndOfLine(currentLine));
+			println(getIndent() + fragment.variableName + " = " + value + ";" + getEndOfLine(currentLine));
 		}
 		else
 		{
 			initialized.add(fragment.variableName);
-			out.println(getIndent() + toGLSL(currentMethod.varName2TypeMap.get(fragment.variableName)) + tab + fragment.variableName + " = " + value + ";" + getEndOfLine(currentLine));
+			println(getIndent() + toGLSL(currentMethod.varName2TypeMap.get(fragment.variableName)) + tab + fragment.variableName + " = " + value + ";" + getEndOfLine(currentLine));
 		}
 	}
 
@@ -703,7 +848,8 @@ public class GLSLEncoder implements CodeEncoder
 		String ownership = owner+".";
 		if(owner.equals("this"))
 			ownership = "";
-		out.println(getIndent()+ownership+fragment.fieldName+tab+"="+tab+value+";"+getEndOfLine(currentLine));
+		if(!fragment.forbiddenToPrint)
+			println(getIndent()+ownership+fragment.fieldName+tab+"="+tab+value+";"+getEndOfLine(currentLine));
 	}
 
 	private void handleNewMultiArrayFragment(NewMultiArrayFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
@@ -731,7 +877,7 @@ public class GLSLEncoder implements CodeEncoder
 	{
 		if(fragment.name.equals("<init>"))
 			return;
-		out.println("}");
+		println("}");
 		indentation--;
 	}
 
@@ -739,7 +885,7 @@ public class GLSLEncoder implements CodeEncoder
 	{
 		if(fragment.name.equals("<init>"))
 			return;
-		out.println();
+		println();
 		String args = "";
 		for(int i = 0;i<fragment.argumentsNames.size();i++)
 		{
@@ -748,7 +894,7 @@ public class GLSLEncoder implements CodeEncoder
 				args+=", ";
 			args+=s;
 		}
-		out.println(toGLSL(fragment.returnType)+tab+fragment.name+"("+args+")\n{");
+		println(toGLSL(fragment.returnType)+tab+fragment.name+"("+args+")\n{");
 		indentation++;
 	}
 
@@ -797,34 +943,37 @@ public class GLSLEncoder implements CodeEncoder
 		}
 		if(fragment.access.isFinal())
 		{
-			out.println("#define"+tab+fragment.name+tab+fragment.initialValue);
+			if(!fragment.forbiddenToPrint)
+				println("#define"+tab+fragment.name+tab+fragment.initialValue);
+			constants.put(fragment.initialValue, fragment.name);
 		}
 		else
 		{
-			if(fragment.initialValue != null)
-			{
-				out.println(storageType+tab+toGLSL(fragment.type)+tab+fragment.name+tab+"="+tab+fragment.initialValue+";");
-			}
-			else
-				out.println(storageType+tab+toGLSL(fragment.type)+tab+fragment.name+";");
+			if(!fragment.forbiddenToPrint)
+    			if(fragment.initialValue != null)
+    			{
+    				println(storageType+tab+toGLSL(fragment.type)+tab+fragment.name+tab+"="+tab+fragment.initialValue+";");
+    			}
+    			else
+    				println(storageType+tab+toGLSL(fragment.type)+tab+fragment.name+";");
 		}
 	}
 
 	@SuppressWarnings("unchecked")
 	private void handleClassFragment(NewClassFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
 	{
-		out.println("// Original class name: "+fragment.className+" compiled from "+fragment.sourceFile+" and of version "+fragment.classVersion);
+		println("// Original class name: "+fragment.className+" compiled from "+fragment.sourceFile+" and of version "+fragment.classVersion);
 		for(CodeFragment child : fragment.getChildren())
 		{
 			if(child instanceof AnnotationFragment)
 			{
 				AnnotationFragment annotFragment = (AnnotationFragment)child;
-				out.println();
+				println();
 				if(annotFragment.name.equals(Extensions.class.getCanonicalName()))
 				{
 					ArrayList<String> values = (ArrayList<String>) annotFragment.values.get("value");
 					for(String extension : values)
-						out.println("#extension "+extension+" : enable"+getEndOfLine(currentLine));
+						println("#extension "+extension+" : enable"+getEndOfLine(currentLine));
 				}
 			}
 		}

@@ -7,6 +7,10 @@ import org.jglrxavpok.jlsl.glsl.GLSL.Uniform;
 public class TestShader extends FragmentShader
 {
 
+	private Vertex vertex;
+	
+	private Vertex vertex1;
+	
 	@Uniform
 	private Vec2 screenSize;
 	
@@ -16,28 +20,29 @@ public class TestShader extends FragmentShader
 	@Uniform
 	private Object[][][] list2 = new Object[70][4][5];
 	
-	public static final double PI = 3.141592653589793D;
+	public static final double PI = 3.141592653589793;
 	
 	@Override
 	public void main()
 	{
-		Vec4 v = new Vec4(gl_FragCoord.x/screenSize.x,gl_FragCoord.y/screenSize.y,gl_FragCoord.z,gl_FragCoord.w);
+		Vec4 v = new Vec4(gl_FragCoord.x/screenSize.x,gl_FragCoord.y/screenSize.y,vertex.test(),vertex1.test());
 		v = normalizer(v, v.length());
-		Mat2 testMatrix = new Mat2(new Vec2(((int)v.x<<2), v.y) , new Vec2(0,1));
+		Mat2 testMatrix = new Mat2(new Vec2(((int)v.x<<2), v.y) , new Vec2(PI,1));
 		Vec2 test = (Vec2)list2[0][1][2];
+		test = test.normalize();
 		gl_FragColor = null;
 		
 		char charTest = 'a';
 		boolean a = false;
 		boolean c = true;
-		boolean b = a | c;
+		boolean b = a & c;
 		if(!(b | a & c))
 		{
 			;
 		}
 		vignette();
 		charTest += 10;
-		normalizer(v, --charTest); // TODO: (see DUP)
+		normalizer(v, charTest); // TODO: (see DUP)
 		normalizer(v, charTest);
 	}
 

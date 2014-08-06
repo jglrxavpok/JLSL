@@ -5,6 +5,7 @@ import java.util.*;
 public class StartOfMethodFragment extends CodeFragment
 {
 	public String name;
+	public String owner;
 	public String returnType;
 	public ArrayList<String> argumentsTypes = new ArrayList<String>();
 	public ArrayList<String> argumentsNames = new ArrayList<String>();
