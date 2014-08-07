@@ -112,6 +112,11 @@ public class GLSLEncoder extends CodeEncoder
 	private boolean allowedToPrint;
 	private PrintWriter output;
 	private Stack<CodeFragment> waiting;
+	private Stack<String> newInstances;
+	private Stack<String> newInstancesValues;
+	private ArrayList<String> toPop;
+	private boolean interpreting;
+	private String structOwnerMethodSeparator;
 
 	public GLSLEncoder(int glslversion)
 	{
@@ -124,6 +129,9 @@ public class GLSLEncoder extends CodeEncoder
 		constants = new HashMap<Object, String>();
 		methodReplacements = new HashMap<String, String>();
 		waiting = new Stack<CodeFragment>();
+		newInstances = new Stack<String>();
+		newInstancesValues = new Stack<String>();
+		this.structOwnerMethodSeparator = "__";
 	}
 	
 	public void convertNumbersToChar(boolean convert)
@@ -336,7 +344,10 @@ public class GLSLEncoder extends CodeEncoder
 		{
 			handleDuplicateFragment((DuplicateFragment)fragment, in, index, out);
 		}
-		
+		else if(fragment.getClass() == NewInstanceFragment.class)
+		{
+			handleNewInstanceFragment((NewInstanceFragment)fragment, in, index, out);
+		}
 		
 		
 		
@@ -345,6 +356,11 @@ public class GLSLEncoder extends CodeEncoder
 		{
 			handleStructFragment((StructFragment)fragment, in, index, out);
 		}
+	}
+
+	private void handleNewInstanceFragment(NewInstanceFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
+	{
+		newInstances.push(fragment.type);
 	}
 
 	private void handleStructFragment(StructFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
@@ -363,6 +379,7 @@ public class GLSLEncoder extends CodeEncoder
 		println(getIndent()+"};");
 		
 		StartOfMethodFragment currentMethod = null;
+		String instanceName = (""+fragment.name.charAt(0)).toLowerCase()+fragment.name.substring(1)+"Instance";
 		for(int i = 0;i<fragment.getChildren().size();i++)
 		{
 			CodeFragment fragment1 = fragment.getChildren().get(i);
@@ -373,17 +390,25 @@ public class GLSLEncoder extends CodeEncoder
 				StartOfMethodFragment method = (StartOfMethodFragment)fragment1;
 				currentMethod = method;
 				String oldName = currentMethod.name;
-				if(currentMethod.name.equals("<init>"))
+				method.varNameMap.put(0, instanceName);
+				
+				boolean isConstructor = false;
+				if(currentMethod.name.equals("<init>") || currentMethod.name.equals(fragment.name+structOwnerMethodSeparator+"new"))
 				{
 					currentMethod.name = "new";
+					method.returnType = fragment.name;
+					isConstructor = true;
 				}
-				currentMethod.name = fragment.name+"_"+currentMethod.name;
-				String instanceName = (""+fragment.name.charAt(0)).toLowerCase()+fragment.name.substring(1)+"Instance";
-				method.argumentsNames.add(0, instanceName);
-				method.argumentsTypes.add(0, fragment.name);
-				method.varNameMap.put(0, instanceName);
+				else if(!method.argumentsNames.contains(instanceName))
+				{
+					method.argumentsNames.add(0, instanceName);
+					method.argumentsTypes.add(0, fragment.name);
+				}
+    			if(!currentMethod.name.startsWith(fragment.name+structOwnerMethodSeparator))	
+    				currentMethod.name = fragment.name+structOwnerMethodSeparator+currentMethod.name;
 				String key = toGLSL(currentMethod.owner)+"."+oldName;
 				methodReplacements.put(key, currentMethod.name);
+				
 				if(DEBUG && fragment1.getClass() == StartOfMethodFragment.class)
 				{
 					System.out.println("GLSLEncoder > Mapped "+key+" to "+currentMethod.name);
@@ -403,7 +428,19 @@ public class GLSLEncoder extends CodeEncoder
 			{
 				handleCodeFragment(waiting.pop(), index, in, out);
 			}
+			
+			if(fragment1.getClass() == EndOfMethodFragment.class && currentMethod.name.equals(fragment.name+structOwnerMethodSeparator+"new"))
+			{
+				println(getIndent()+"return "+instanceName+";");
+			}
+			
+			this.allowedToPrint = !fragment1.forbiddenToPrint;
 			handleCodeFragment(fragment1, i, fragment.getChildren(), out);
+			
+			if(fragment1.getClass() == StartOfMethodFragment.class && currentMethod.name.equals(fragment.name+structOwnerMethodSeparator+"new"))
+			{
+				println(getIndent()+fragment.name+tab+instanceName+";");
+			}
 		}
 	}
 
@@ -424,6 +461,7 @@ public class GLSLEncoder extends CodeEncoder
 
 	private void interpret(List<CodeFragment> in)
 	{
+		interpreting = true;
 		Stack<String> copy = stack;
 		Stack<String> tmpstack = new Stack<String>();
 		stack = tmpstack;
@@ -437,6 +475,25 @@ public class GLSLEncoder extends CodeEncoder
 			{
 				currentMethod = (StartOfMethodFragment) fragment;
 			}
+			else if(fragment.getClass() == FieldFragment.class)
+			{
+				FieldFragment fieldFrag = (FieldFragment)fragment;
+				if(hasStructAttached(fieldFrag.type) && !loadedStructs.contains(toGLSL(fieldFrag.type)))
+				{
+					loadedStructs.add(toGLSL(fieldFrag.type));
+					StructFragment struct = new StructFragment();
+					struct.name = conversionsToStructs.get(fieldFrag.type);
+					HashMap<String, String> fields = new HashMap<String, String>();
+					struct.fields = fields;
+					currentRequestType = STRUCT;
+					requestData = struct;
+					String s = "/"+fieldFrag.type.replace(".", "/")+".class";
+					context.requestAnalysisForEncoder(GLSLEncoder.class.getResourceAsStream(s));
+					in.add(i, struct);
+					currentRequestType = 0;
+					i--;
+				}
+			}
 			else if(fragment.getClass() == PutFieldFragment.class)
 			{
 				PutFieldFragment storeFrag = (PutFieldFragment)fragment;
@@ -448,24 +505,9 @@ public class GLSLEncoder extends CodeEncoder
 						if(fragment1.getClass() == FieldFragment.class)
 						{
 							FieldFragment fieldFrag = (FieldFragment)fragment1;
-							if(hasStructAttached(fieldFrag.type) && !loadedStructs.contains(fieldFrag.type))
+							if(fieldFrag.name.equals(storeFrag.fieldName) && fieldFrag.type.equals(storeFrag.fieldType) && !(fieldFrag.access.isFinal() && fieldFrag.initialValue != null))
 							{
-								loadedStructs.add(fieldFrag.type);
-								StructFragment struct = new StructFragment();
-								struct.name = conversionsToStructs.get(fieldFrag.type);
-								HashMap<String, String> fields = new HashMap<String, String>();
-								struct.fields = fields;
-								currentRequestType = STRUCT;
-								requestData = struct;
-								String s = "/"+fieldFrag.type.replace(".", "/")+".class";
-								context.requestAnalysisForEncoder(GLSLEncoder.class.getResourceAsStream(s));
-								in.add(ii, struct);
-								currentRequestType = 0;
-								ii++;
-							}
-							if(fieldFrag.name.equals(storeFrag.fieldName) && fieldFrag.type.equals(storeFrag.fieldType))
-							{
-								fieldFrag.initialValue = stack.pop();
+								fieldFrag.initialValue = stack.peek();
 								dontHandle = true;
 								storeFrag.forbiddenToPrint = true;
 								break;
@@ -476,6 +518,8 @@ public class GLSLEncoder extends CodeEncoder
 			}
 			if(!dontHandle)
 			{
+				this.output = nullPrinter;
+				this.allowedToPrint = !fragment.forbiddenToPrint;
 				if(!waiting.isEmpty())
 				{
 					handleCodeFragment(waiting.pop(), i, in, nullPrinter);
@@ -494,6 +538,7 @@ public class GLSLEncoder extends CodeEncoder
 		extensions.clear();
 		constants.clear();
 		stack = copy;
+		interpreting = false;
 	}
 	
 	private void println()
@@ -593,18 +638,24 @@ public class GLSLEncoder extends CodeEncoder
 	{
 		String s = "";
 		String n = fragment.methodName;
+		boolean isConstructor = false;
+		if(n.equals("<init>"))
+		{
+			n = toGLSL(fragment.methodOwner);
+			isConstructor = true;
+		}
 		if(methodReplacements.containsKey(toGLSL(fragment.methodOwner)+"."+fragment.methodName))
 		{
+			String nold = toGLSL(fragment.methodOwner)+"."+fragment.methodName;
 			n = methodReplacements.get(toGLSL(fragment.methodOwner)+"."+fragment.methodName);
+			System.out.println("GLSLEncoder > Replacing "+nold+" by "+n);
 		}
 		if(fragment.isSpecial && currentMethod.name.equals("<init>") && fragment.methodOwner.equals(currentClass.superclass))
 		{
 			this.allowedToPrint = false;
 		}
-		if(n.equals("<init>"))
-		{
-			n = toGLSL(fragment.methodOwner);
-		}
+		
+		
 		s+=n+"(";
 		ArrayList<String> args = new ArrayList<String>();
 		for(@SuppressWarnings("unused") String type : fragment.argumentsTypes)
@@ -643,15 +694,13 @@ public class GLSLEncoder extends CodeEncoder
 				s = n+(parenthesis ? "(" : "")+owner+(argsStr.length() > 0 ? ", ": "") + argsStr+(parenthesis ? ")" : "");
 			else
 				s = owner+n+(parenthesis ? "(" : "")+argsStr+(parenthesis ? ")" : "");
-			if(fragment.returnType.equals("void"))
-				println(getIndent()+s+";"+getEndOfLine(currentLine));
-			else
-				stack.push("("+s+")");
+			stack.push("("+s+")");
 		}
 		else
 		{
 			stack.push(s);
 		}
+		
 	}
 
 	private void handleElseStatementFragment(ElseStatementFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
@@ -846,6 +895,16 @@ public class GLSLEncoder extends CodeEncoder
 		String value = stack.pop();
 		String owner = stack.pop();
 		String ownership = owner+".";
+		for(int i = 0;i<index;i++)
+		{
+			CodeFragment frag = in.get(i);
+			if(frag.getClass() == FieldFragment.class)
+			{
+				FieldFragment fieldFrag = (FieldFragment)frag;
+				if(fieldFrag.access.isFinal())
+					return;
+			}
+		}
 		if(owner.equals("this"))
 			ownership = "";
 		if(!fragment.forbiddenToPrint)
@@ -943,19 +1002,26 @@ public class GLSLEncoder extends CodeEncoder
 		}
 		if(fragment.access.isFinal())
 		{
-			if(!fragment.forbiddenToPrint)
+			if(fragment.access.isStatic())
+			{
 				println("#define"+tab+fragment.name+tab+fragment.initialValue);
-			constants.put(fragment.initialValue, fragment.name);
+				constants.put(fragment.initialValue, fragment.name);
+			}
+			else
+			{
+				storageType = "const";
+				println(storageType+tab+toGLSL(fragment.type)+tab+fragment.name+tab+"="+tab+fragment.initialValue+";");
+				constants.put(fragment.initialValue, fragment.name);
+			}
 		}
 		else
 		{
-			if(!fragment.forbiddenToPrint)
-    			if(fragment.initialValue != null)
-    			{
-    				println(storageType+tab+toGLSL(fragment.type)+tab+fragment.name+tab+"="+tab+fragment.initialValue+";");
-    			}
-    			else
-    				println(storageType+tab+toGLSL(fragment.type)+tab+fragment.name+";");
+			if(fragment.initialValue != null)
+			{
+				println(storageType+tab+toGLSL(fragment.type)+tab+fragment.name+tab+"="+tab+fragment.initialValue+";");
+			}
+			else
+				println(storageType+tab+toGLSL(fragment.type)+tab+fragment.name+";");
 		}
 	}
 

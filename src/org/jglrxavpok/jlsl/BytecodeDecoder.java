@@ -914,6 +914,12 @@ public class BytecodeDecoder extends CodeDecoder
 					cast.to = operand.replace("/", ".");
 					out.add(cast);
 				}
+				else if(ainsnNode.getOpcode() == NEW)
+				{
+					NewInstanceFragment newFrag = new NewInstanceFragment();
+					newFrag.type = operand.replace("/", ".");
+					out.add(newFrag);
+				}
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.MULTIANEWARRAY_INSN)
 			{
