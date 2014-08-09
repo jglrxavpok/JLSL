@@ -1,6 +1,6 @@
-package org.jglrxavpok.jlsl.glsl;
+package org.jglrxavpok.jlsl;
 
-import org.jglrxavpok.jlsl.glsl.GLSL.*;
+import org.jglrxavpok.jlsl.GLSL.Substitute;
 
 
 public class Vec4
@@ -18,30 +18,6 @@ public class Vec4
 		this.w = w;
 	}
 	
-	public Vec4(double x, double y, Vec2 zw)
-	{
-		this.z = zw.x;
-		this.w = zw.y;
-		this.x = x;
-		this.y = y;
-	}
-	
-	public Vec4(double x, Vec2 yz, double w)
-	{
-		this.y = yz.x;
-		this.z = yz.y;
-		this.x = x;
-		this.w = w;
-	}
-	
-	public Vec4(Vec2 xy, double z, double w)
-	{
-		this.x = xy.x;
-		this.y = xy.y;
-		this.z = z;
-		this.w = w;
-	}
-
 	public double length()
 	{
 		double dx = x;
@@ -72,11 +48,5 @@ public class Vec4
 	public Vec4 sub(Vec4 v)
 	{
 		return new Vec4(x-v.x,y-v.y,z-v.z,w-v.w);
-	}
-
-	@Substitute(value = "*", usesParenthesis = false, ownerBefore = true)
-	public Vec4 mul(double d)
-	{
-		return new Vec4(x*d,y*d,z*d,w*d);
 	}
 }

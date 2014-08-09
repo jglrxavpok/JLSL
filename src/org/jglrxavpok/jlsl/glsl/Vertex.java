@@ -7,10 +7,10 @@ public class Vertex
 	
 	private Vec2 texCoords = new Vec2(0,0);
 	
-	public double test()
+	public double test(double v)
 	{
 		// return pos.x += 1;  TODO: DUP2_X1
-		pos.x++;
+		pos.x+=v;
 		return pos.x;
 	}
 }

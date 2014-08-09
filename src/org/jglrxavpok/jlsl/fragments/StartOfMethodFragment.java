@@ -4,6 +4,7 @@ import java.util.*;
 
 public class StartOfMethodFragment extends CodeFragment
 {
+	public AccessPolicy access;
 	public String name;
 	public String owner;
 	public String returnType;

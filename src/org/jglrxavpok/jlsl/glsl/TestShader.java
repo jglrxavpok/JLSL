@@ -1,5 +1,6 @@
 package org.jglrxavpok.jlsl.glsl;
 
+import org.jglrxavpok.jlsl.fragments.*;
 import org.jglrxavpok.jlsl.glsl.GLSL.Extensions;
 import org.jglrxavpok.jlsl.glsl.GLSL.Uniform;
 
@@ -10,6 +11,8 @@ public class TestShader extends FragmentShader
 	private Vertex vertex = new Vertex();
 	
 	private Vertex vertex1 = new Vertex();
+	
+	private final Sampler2D texture = new Sampler2D(9);
 	
 	@Uniform
 	private Vec2 screenSize;
@@ -25,25 +28,26 @@ public class TestShader extends FragmentShader
 	@Override
 	public void main()
 	{
-		Vec4 v = new Vec4(gl_FragCoord.x/screenSize.x,gl_FragCoord.y/screenSize.y,vertex.test(),vertex1.test());
+		Vec4 v = new Vec4(gl_FragCoord.x/screenSize.x,gl_FragCoord.y/screenSize.y,vertex.test(1),vertex1.test(1));
 		v = normalizer(v, v.length());
 		Mat2 testMatrix = new Mat2(new Vec2(((int)v.x<<2), v.y) , new Vec2(PI,1));
 		Vec2 test = (Vec2)list2[0][1][2];
 		test = test.normalize();
 		gl_FragColor = null;
-//		new Vertex(); TODO
+//		new Vertex(); //TODO: NEW
 		
+		String testTxt = "Hello";
 		char charTest = 'a';
 		boolean a = false;
 		boolean c = true;
-		boolean b = a & c;
+		boolean b = c && a;
 		if(!(b | a & c))
 		{
 			;
 		}
 		vignette();
 		charTest += 10;
-		normalizer(v, charTest); // TODO: (see DUP)
+		normalizer(v, charTest);
 		normalizer(v, charTest);
 	}
 
@@ -51,7 +55,12 @@ public class TestShader extends FragmentShader
 	{
 		gl_FragColor = new Vec4(gl_FragCoord.x/screenSize.x, gl_FragCoord.y/screenSize.y, 0, 1);
 		gl_FragColor.z = 1;
-		Vec4 v1 = gl_FragColor.sub(gl_FragCoord.sub(gl_FragColor));
+		
+		
+		double distance = gl_FragCoord.sub(new Vec4(screenSize.div(2), gl_FragCoord.z, gl_FragCoord.w)).length();
+		gl_FragColor = texture(texture, new Vec2(0.5,0.5));
+		gl_FragColor = new Vec4(1,1,1,1).mul(distance);
+		
 		/*boolean b = false;
 		if(b)
 		{

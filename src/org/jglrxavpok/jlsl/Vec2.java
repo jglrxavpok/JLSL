@@ -1,6 +1,4 @@
-package org.jglrxavpok.jlsl.glsl;
-
-import org.jglrxavpok.jlsl.glsl.GLSL.*;
+package org.jglrxavpok.jlsl;
 
 public class Vec2
 {
@@ -28,12 +26,6 @@ public class Vec2
 		double x1 = x/l;
 		double y1 = y/l;
 		return new Vec2(x1,y1);
-	}
-
-	@Substitute(value = "/", usesParenthesis = false, ownerBefore = true)
-	public Vec2 div(double i)
-	{
-		return new Vec2(x/i,y/i);
 	}
 
 

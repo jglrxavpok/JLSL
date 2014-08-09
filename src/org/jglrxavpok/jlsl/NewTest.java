@@ -9,7 +9,9 @@ public class NewTest
 
 	public static void main(String[] args)
 	{
-		JLSLContext context = new JLSLContext(new BytecodeDecoder(), new GLSLEncoder(120));
+		BytecodeDecoder decoder = new BytecodeDecoder();//.addInstructionsFromInterfaces(true);
+		GLSLEncoder encoder = new GLSLEncoder(120);
+		JLSLContext context = new JLSLContext(decoder, encoder);
 		context.execute(TestShader.class, new PrintWriter(System.out));
 	}
 
