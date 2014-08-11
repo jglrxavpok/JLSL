@@ -42,6 +42,14 @@ public class Vec4
 		this.w = w;
 	}
 
+	public Vec4(Vec3 xyz, double w)
+	{
+		this.x = xyz.x;
+		this.y = xyz.y;
+		this.z = xyz.z;
+		this.w = w;
+	}
+
 	public double length()
 	{
 		double dx = x;

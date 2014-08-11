@@ -10,4 +10,10 @@ public abstract class FragmentShader extends ShaderBase
 	{
 		return new Vec4(0,0,0,0);
 	}
+	
+	@Deprecated
+	public Vec4 texture2D(Sampler2D texture, Vec2 coords)
+	{
+		return new Vec4(0,0,0,0);
+	}
 }

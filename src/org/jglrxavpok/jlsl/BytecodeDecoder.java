@@ -14,7 +14,7 @@ import org.objectweb.asm.util.*;
 public class BytecodeDecoder extends CodeDecoder
 {
 
-	public static boolean DEBUG = false;
+	public static boolean DEBUG = true;
 
 	public BytecodeDecoder()
 	{
@@ -148,7 +148,8 @@ public class BytecodeDecoder extends CodeDecoder
 				for(String argType : argsTypes)
 				{
 					startOfMethodFragment.argumentsTypes.add(argType);
-					startOfMethodFragment.argumentsNames.add(localNames.get(argIndex));
+					String name = localNames.isEmpty() ? "var"+argIndex : localNames.get(argIndex);
+					startOfMethodFragment.argumentsNames.add(name);
 					argIndex++;
 				}
 				List<AnnotationNode> annots = node.visibleAnnotations;
@@ -198,6 +199,7 @@ public class BytecodeDecoder extends CodeDecoder
 
 	private static void handleMethodNode(MethodNode node, HashMap<Integer, String> varTypeMap, HashMap<Integer, String> varNameMap, List<CodeFragment> out)
 	{
+		int lastFrameType = 0;
 		int frames = 0;
 		int framesToSkip = 0;
 		Stack<LabelNode> toJump = new Stack<LabelNode>();
@@ -498,6 +500,19 @@ public class BytecodeDecoder extends CodeDecoder
 					out.add(duplicate);
 				}
 				
+				else if(ainsnNode.getOpcode() == DCMPG || ainsnNode.getOpcode() == FCMPG)
+				{
+					CompareFragment compareFrag = new CompareFragment();
+					compareFrag.inferior = true;
+					out.add(compareFrag);
+				}
+				else if(ainsnNode.getOpcode() == DCMPL || ainsnNode.getOpcode() == FCMPL)
+				{
+					CompareFragment compareFrag = new CompareFragment();
+					compareFrag.inferior = false;
+					out.add(compareFrag);
+				}
+				
 				else if(ainsnNode.getOpcode() == AASTORE || ainsnNode.getOpcode() == IASTORE || ainsnNode.getOpcode() == BASTORE || ainsnNode.getOpcode() == LASTORE || ainsnNode.getOpcode() == SASTORE || ainsnNode.getOpcode() == FASTORE || ainsnNode.getOpcode() == DASTORE || ainsnNode.getOpcode() == CASTORE)
 				{
 					ArrayStoreFragment storeFrag = new ArrayStoreFragment();
@@ -519,9 +534,19 @@ public class BytecodeDecoder extends CodeDecoder
 					{
 						while(!toJump.isEmpty() && toJump.pop().getLabel().equals(labelNode.getLabel()))
 						{
-    						EndOfBlockFragment endOfBlockFrag = new EndOfBlockFragment();
-    						out.add(endOfBlockFrag);
-    						frames--;
+							if(!gotos.isEmpty())
+							{
+								while(gotos.contains(currentLabel))
+								{
+									if(frames > 0)
+									{
+                						EndOfBlockFragment endOfBlockFrag = new EndOfBlockFragment();
+                						out.add(endOfBlockFrag);
+                						frames--;
+									}
+            						gotos.remove(currentLabel);
+								}
+							}
 						}
 						break;
 					}
@@ -544,16 +569,25 @@ public class BytecodeDecoder extends CodeDecoder
 					{
 						boolean a = (!ifs.isEmpty() && ifs.contains(currentLabel));
 						boolean b = (gotos.isEmpty() || !gotos.contains(currentLabel));
-						if(b || a)
+						int nbr = 0;
+						if(a || b)
 						{
-    						EndOfBlockFragment end = new EndOfBlockFragment();
+							while(ifs.contains(currentLabel))
+							{
+    							nbr++;
+    							ifs.remove(currentLabel);
+							}
+						}
+
+						for(int j = 0;j<nbr;j++)
+						{
+							EndOfBlockFragment end = new EndOfBlockFragment();
     						out.add(end);
     						frames--;
-    						if(a)
-    							ifs.pop();
 						}
 					}
 				}
+				lastFrameType = frameNode.type;
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.JUMP_INSN)
 			{
@@ -670,10 +704,35 @@ public class BytecodeDecoder extends CodeDecoder
     					toJump.push(jumpNode.label);
 					}
 				}
+				else if(jumpNode.getOpcode() == IFGE)
+				{
+					IfStatementFragment ifFrag = new IfStatementFragment();
+					frames++;
+					ifs.push(jumpNode.label.getLabel());
+					ifFrag.toJump = jumpNode.label.getLabel().toString();
+					out.add(ifFrag);
+					toJump.push(jumpNode.label);
+				}
+				else if(jumpNode.getOpcode() == IFLE)
+				{
+					IfStatementFragment ifFrag = new IfStatementFragment();
+					frames++;
+					ifs.push(jumpNode.label.getLabel());
+					ifFrag.toJump = jumpNode.label.getLabel().toString();
+					out.add(ifFrag);
+					toJump.push(jumpNode.label);
+				}
 				else if(jumpNode.getOpcode() == GOTO)
 				{
 					toJump.push(jumpNode.label);
 					gotos.push(jumpNode.label.getLabel());
+					if(instructions.get(index-1) instanceof LineNumberNode && lastFrameType == F_SAME)
+					{
+						EndOfBlockFragment end = new EndOfBlockFragment();
+						frames--;
+						out.add(end);
+					}
+					
 					EndOfBlockFragment end = new EndOfBlockFragment();
 					frames--;
 					out.add(end);

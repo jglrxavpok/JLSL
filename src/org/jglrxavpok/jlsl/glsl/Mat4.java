@@ -1,5 +1,7 @@
 package org.jglrxavpok.jlsl.glsl;
 
+import org.jglrxavpok.jlsl.glsl.GLSL.*;
+
 public class Mat4
 {
 
@@ -27,5 +29,17 @@ public class Mat4
 		data[13] = column4.y;
 		data[14] = column4.z;
 		data[15] = column4.w;
+	}
+	
+	@Substitute(value="*", ownerBefore=true, usesParenthesis = false)
+	public Vec4 mul(Vec4 m)
+	{
+		return null;
+	}
+	
+	@Substitute(value="*", ownerBefore=true, usesParenthesis = false)
+	public Mat4 mul(Mat4 m)
+	{
+		return null; // TODO: Implement
 	}
 }

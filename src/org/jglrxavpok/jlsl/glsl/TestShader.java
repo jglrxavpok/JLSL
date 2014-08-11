@@ -1,6 +1,6 @@
 package org.jglrxavpok.jlsl.glsl;
 
-import org.jglrxavpok.jlsl.fragments.*;
+import org.jglrxavpok.jlsl.*;
 import org.jglrxavpok.jlsl.glsl.GLSL.Extensions;
 import org.jglrxavpok.jlsl.glsl.GLSL.Uniform;
 
@@ -30,6 +30,10 @@ public class TestShader extends FragmentShader
 	{
 		Vec4 v = new Vec4(gl_FragCoord.x/screenSize.x,gl_FragCoord.y/screenSize.y,vertex.test(1),vertex1.test(1));
 		v = normalizer(v, v.length());
+		if(v.x != v.y)
+		{
+			v.z = 1.0;
+		}
 		Mat2 testMatrix = new Mat2(new Vec2(((int)v.x<<2), v.y) , new Vec2(PI,1));
 		Vec2 test = (Vec2)list2[0][1][2];
 		test = test.normalize();
@@ -61,7 +65,7 @@ public class TestShader extends FragmentShader
 		gl_FragColor = texture(texture, new Vec2(0.5,0.5));
 		gl_FragColor = new Vec4(1,1,1,1).mul(distance);
 		
-		/*boolean b = false;
+		boolean b = false;
 		if(b)
 		{
 			gl_FragColor.w = 1;
@@ -88,7 +92,7 @@ public class TestShader extends FragmentShader
 		{
 			gl_FragColor.y = 1;
 		}
-		gl_FragColor.x = 2;*/
+		gl_FragColor.x = 2;
 	}
 
 	private Vec4 normalizer(Vec4 v, double l)

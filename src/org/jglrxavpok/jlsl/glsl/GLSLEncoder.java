@@ -13,11 +13,12 @@ import org.jglrxavpok.jlsl.glsl.GLSL.Layout;
 import org.jglrxavpok.jlsl.glsl.GLSL.Out;
 import org.jglrxavpok.jlsl.glsl.GLSL.Substitute;
 import org.jglrxavpok.jlsl.glsl.GLSL.Uniform;
+import org.jglrxavpok.jlsl.glsl.GLSL.Varying;
 import org.jglrxavpok.jlsl.glsl.fragments.*;
 
 public class GLSLEncoder extends CodeEncoder
 {
-	public static boolean DEBUG = false;
+	public static boolean DEBUG = true;
 	
 	private int indentation;
 	private int glslversion;
@@ -78,7 +79,6 @@ public class GLSLEncoder extends CodeEncoder
 		
 		setGLSLTranslation(Sampler2D.class.getCanonicalName(), "sampler2D");
 		
-		addToStructConversion(Vertex.class.getCanonicalName(), "Vertex");
 	}
 	
 	private HashMap<String, String> translations = new HashMap<String, String>();
@@ -361,7 +361,10 @@ public class GLSLEncoder extends CodeEncoder
 		{
 			handleNotEqualCheckFragment((NotEqualCheckFragment)fragment, in, index, out);
 		}
-		
+		else if(fragment.getClass() == CompareFragment.class)
+		{
+			handleCompareFragment((CompareFragment)fragment, in, index, out);
+		}
 		
 		
 		
@@ -369,6 +372,13 @@ public class GLSLEncoder extends CodeEncoder
 		{
 			handleStructFragment((StructFragment)fragment, in, index, out);
 		}
+	}
+
+	private void handleCompareFragment(CompareFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
+	{
+		String right = stack.pop();
+		String left = stack.pop();
+		stack.push(left + space + (fragment.inferior ? "<" : ">")+space+right);
 	}
 
 	private void handleNotEqualCheckFragment(NotEqualCheckFragment fragment, List<CodeFragment> in, int index, PrintWriter out)
@@ -1106,7 +1116,7 @@ public class GLSLEncoder extends CodeEncoder
     			{
     				storageType = "out";
     			}
-    			else if(annot.name.equals(Out.class.getCanonicalName()))
+    			else if(annot.name.equals(Varying.class.getCanonicalName()))
     			{
     				storageType = "varying";
     			}
