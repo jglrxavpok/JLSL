@@ -111,7 +111,6 @@ public class BytecodeDecoder extends CodeDecoder
 			
 			Collections.sort(methodNodes, new Comparator<MethodNode>()
 			{
-				@Override
 				public int compare(MethodNode arg0, MethodNode arg1)
 				{
 					if(arg0.name.equals("main")) return 1;
