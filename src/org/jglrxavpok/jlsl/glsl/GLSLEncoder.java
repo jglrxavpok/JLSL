@@ -756,6 +756,8 @@ public class GLSLEncoder extends CodeEncoder
 		s+=")";
 		boolean ownerBefore = false;
 		boolean parenthesis = true;
+		int ownerPosition = 0;
+		boolean actsAsField = false;
 		for(CodeFragment child : fragment.getChildren())
 		{
 			if(child.getClass() == AnnotationFragment.class)
@@ -763,9 +765,16 @@ public class GLSLEncoder extends CodeEncoder
 				AnnotationFragment annot = (AnnotationFragment)child;
 				if(annot.name.equals(Substitute.class.getCanonicalName()))
 				{
-					n = (String) annot.values.get("value");
-					ownerBefore = (Boolean) annot.values.get("ownerBefore");
-					parenthesis = (Boolean) annot.values.get("usesParenthesis");
+					if(!annot.values.get("value").equals("$"))
+						n = (String) annot.values.get("value");
+					if(annot.values.containsKey("ownerBefore"))
+						ownerBefore = (Boolean) annot.values.get("ownerBefore");
+					if(annot.values.containsKey("ownerPosition"))
+						ownerPosition = (Integer)annot.values.get("ownerPosition");
+					if(annot.values.containsKey("actsAsField"))
+						actsAsField = (Boolean)annot.values.get("actsAsField");
+					if(annot.values.containsKey("usesParenthesis"))
+						parenthesis = (Boolean) annot.values.get("usesParenthesis");
 				}
 			}
 		}
@@ -784,7 +793,18 @@ public class GLSLEncoder extends CodeEncoder
     			}
 			}
 			if(!ownerBefore)
-				s = n+(parenthesis ? "(" : "")+(owner != null ? owner+(argsStr.length() > 0 ? ", ": "") : "") + argsStr+(parenthesis ? ")" : "");
+			{
+				if(actsAsField)
+				{
+					s =( owner  != null ? owner : "" )+"."+n;
+					if(argsStr.length() > 0)
+					{
+						s+=" = "+argsStr;
+					}
+				}
+				else
+					s = n+(parenthesis ? "(" : "")+(owner != null ? owner+(argsStr.length() > 0 ? ", ": "") : "") + argsStr+(parenthesis ? ")" : "");
+			}
 			else
 				s = (owner != null ? owner : "")+n+(parenthesis ? "(" : "")+argsStr+(parenthesis ? ")" : "");
 			if(fragment.returnType.equals("void"))

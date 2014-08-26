@@ -52,8 +52,12 @@ public class GLSL
 	{
 		String value();
 
-		boolean usesParenthesis();
+		boolean usesParenthesis() default true;
 		
-		boolean ownerBefore();
+		boolean ownerBefore() default false;
+
+		int ownerPosition()  default 0;
+
+		boolean actsAsField() default false;
 	}
 }
