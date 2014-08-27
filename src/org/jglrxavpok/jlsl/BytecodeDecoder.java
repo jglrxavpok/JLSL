@@ -18,44 +18,44 @@ public class BytecodeDecoder extends CodeDecoder
 
 	public BytecodeDecoder()
 	{
-		
+
 	}
-	
+
 	public BytecodeDecoder addInstructionsFromInterfaces(boolean add)
 	{
 		this.instructionsFromInterfaces = add;
 		return this;
 	}
-	
+
 	private boolean instructionsFromInterfaces = false;
-	
+
 	@SuppressWarnings("unchecked")
 	@Override
 	public void handleClass(Object data, List<CodeFragment> out)
 	{
 		try
 		{
-			if(data == null)
-				return;
+			if(data == null) return;
 			ClassReader reader;
 			if(data instanceof byte[])
 			{
-				reader = new ClassReader((byte[]) data);
+				reader = new ClassReader((byte[])data);
 			}
 			else if(data instanceof InputStream)
 			{
-				reader = new ClassReader((InputStream) data);
+				reader = new ClassReader((InputStream)data);
 			}
 			else if(data instanceof String)
 			{
-				handleClass(Class.forName((String) data), out);
+				handleClass(Class.forName((String)data), out);
 				return;
 			}
 			else if(data instanceof Class<?>)
 			{
-				reader = new ClassReader(((Class<?>) data).getResourceAsStream(((Class<?>) data).getSimpleName() + ".class"));
+				reader = new ClassReader(((Class<?>)data).getResourceAsStream(((Class<?>)data).getSimpleName() + ".class"));
 			}
-			else throw new JLSLException("Invalid type: " + data.getClass().getCanonicalName());
+			else
+				throw new JLSLException("Invalid type: " + data.getClass().getCanonicalName());
 			ClassNode classNode = new ClassNode();
 			reader.accept(classNode, 0);
 			if(DEBUG) reader.accept(new TraceClassVisitor(new PrintWriter(System.out)), 0);
@@ -64,32 +64,29 @@ public class BytecodeDecoder extends CodeDecoder
 			classFragment.className = classNode.name.replace("/", ".").replace("$", ".");
 			classFragment.superclass = classNode.superName.replace("/", ".").replace("$", ".");
 			classFragment.access = new AccessPolicy(classNode.access);
-			if(classNode.sourceFile != null)
-				classFragment.sourceFile = classNode.sourceFile;
+			if(classNode.sourceFile != null) classFragment.sourceFile = classNode.sourceFile;
 			classFragment.classVersion = classNode.version;
-			
+
 			List<String> interfaces = classNode.interfaces;
 			classFragment.interfaces = interfaces.toArray(new String[0]);
 
-			if(instructionsFromInterfaces)
-    			for(String interfaceInst : interfaces)
-    			{
-    				ArrayList<CodeFragment> fragments = new ArrayList<CodeFragment>();
-    				handleClass(interfaceInst.replace("/", "."), fragments);
-    				
-    				out.addAll(fragments);
-    			}
+			if(instructionsFromInterfaces) for(String interfaceInst : interfaces)
+			{
+				ArrayList<CodeFragment> fragments = new ArrayList<CodeFragment>();
+				handleClass(interfaceInst.replace("/", "."), fragments);
+
+				out.addAll(fragments);
+			}
 			out.add(classFragment);
 			List<MethodNode> methodNodes = classNode.methods;
 			List<FieldNode> fieldNodes = classNode.fields;
-			
+
 			List<AnnotationNode> list = classNode.visibleAnnotations;
-			if(list != null) 
-				for(AnnotationNode annotNode : list)
-    			{
-    				AnnotationFragment annotFragment = createFromNode(annotNode);
-    				classFragment.addChild(annotFragment);
-    			}
+			if(list != null) for(AnnotationNode annotNode : list)
+			{
+				AnnotationFragment annotFragment = createFromNode(annotNode);
+				classFragment.addChild(annotFragment);
+			}
 			for(FieldNode field : fieldNodes)
 			{
 				String name = field.name;
@@ -100,15 +97,14 @@ public class BytecodeDecoder extends CodeDecoder
 				fieldFragment.initialValue = field.value;
 				fieldFragment.access = new AccessPolicy(field.access);
 				List<AnnotationNode> annotations = field.visibleAnnotations;
-				if(annotations != null)
-    				for(AnnotationNode annotNode : annotations)
-    				{
-    					AnnotationFragment annotFragment = createFromNode(annotNode);
-    					fieldFragment.addChild(annotFragment);
-    				}
+				if(annotations != null) for(AnnotationNode annotNode : annotations)
+				{
+					AnnotationFragment annotFragment = createFromNode(annotNode);
+					fieldFragment.addChild(annotFragment);
+				}
 				out.add(fieldFragment);
 			}
-			
+
 			Collections.sort(methodNodes, new Comparator<MethodNode>()
 			{
 				public int compare(MethodNode arg0, MethodNode arg1)
@@ -126,7 +122,7 @@ public class BytecodeDecoder extends CodeDecoder
 				startOfMethodFragment.access = new AccessPolicy(node.access);
 				startOfMethodFragment.name = node.name;
 				startOfMethodFragment.owner = classNode.name.replace("/", ".");
-				startOfMethodFragment.returnType = typesFromDesc(node.desc.substring(node.desc.indexOf(")")+1))[0];
+				startOfMethodFragment.returnType = typesFromDesc(node.desc.substring(node.desc.indexOf(")") + 1))[0];
 				ArrayList<String> localNames = new ArrayList<String>();
 				for(LocalVariableNode var : localVariables)
 				{
@@ -147,16 +143,15 @@ public class BytecodeDecoder extends CodeDecoder
 				for(String argType : argsTypes)
 				{
 					startOfMethodFragment.argumentsTypes.add(argType);
-					String name = localNames.isEmpty() ? "var"+argIndex : localNames.get(argIndex);
+					String name = localNames.isEmpty() ? "var" + argIndex : localNames.get(argIndex);
 					startOfMethodFragment.argumentsNames.add(name);
-					argIndex++;
+					argIndex++ ;
 				}
 				List<AnnotationNode> annots = node.visibleAnnotations;
-				if(node.visibleAnnotations != null)
-					for(AnnotationNode annotNode : annots)
-					{
-						startOfMethodFragment.addChild(createFromNode(annotNode));
-					}
+				if(node.visibleAnnotations != null) for(AnnotationNode annotNode : annots)
+				{
+					startOfMethodFragment.addChild(createFromNode(annotNode));
+				}
 				out.add(startOfMethodFragment);
 				handleMethodNode(node, startOfMethodFragment.varTypeMap, startOfMethodFragment.varNameMap, out);
 				EndOfMethodFragment endOfMethodFragment = new EndOfMethodFragment();
@@ -186,10 +181,9 @@ public class BytecodeDecoder extends CodeDecoder
 		AnnotationFragment annotFragment = new AnnotationFragment();
 		annotFragment.name = typesFromDesc(annotNode.desc)[0].replace("/", ".").replace("$", ".");
 		List<Object> values = annotNode.values;
-		if(values != null)
-		for(int index = 0; index < values.size(); index += 2)
+		if(values != null) for(int index = 0; index < values.size(); index += 2)
 		{
-			String key = (String) values.get(index);
+			String key = (String)values.get(index);
 			Object value = values.get(index + 1);
 			annotFragment.values.put(key, value);
 		}
@@ -206,12 +200,12 @@ public class BytecodeDecoder extends CodeDecoder
 		Stack<Label> ifs = new Stack<Label>();
 		InsnList instructions = node.instructions;
 		Label currentLabel = null;
-		for(int index = 0; index < instructions.size(); index++)
+		for(int index = 0; index < instructions.size(); index++ )
 		{
 			AbstractInsnNode ainsnNode = instructions.get(index);
 			if(ainsnNode.getType() == AbstractInsnNode.INSN)
 			{
-				InsnNode insnNode = (InsnNode) ainsnNode;
+				InsnNode insnNode = (InsnNode)ainsnNode;
 				if(insnNode.getOpcode() == ICONST_0)
 				{
 					LoadConstantFragment loadConstantFragment = new LoadConstantFragment();
@@ -312,7 +306,7 @@ public class BytecodeDecoder extends CodeDecoder
 				{
 					out.add(new ModFragment());
 				}
-				
+
 				else if(ainsnNode.getOpcode() == D2I)
 				{
 					CastFragment cast = new CastFragment();
@@ -390,7 +384,7 @@ public class BytecodeDecoder extends CodeDecoder
 					cast.to = "float";
 					out.add(cast);
 				}
-				
+
 				else if(ainsnNode.getOpcode() == ISHR)
 				{
 					RightShiftFragment shrFragment = new RightShiftFragment();
@@ -434,7 +428,7 @@ public class BytecodeDecoder extends CodeDecoder
 					shlFragment.signed = true;
 					out.add(shlFragment);
 				}
-				
+
 				else if(ainsnNode.getOpcode() == IAND)
 				{
 					AndFragment andFragment = new AndFragment();
@@ -447,7 +441,7 @@ public class BytecodeDecoder extends CodeDecoder
 					andFragment.type = "long";
 					out.add(andFragment);
 				}
-				
+
 				else if(ainsnNode.getOpcode() == IOR)
 				{
 					OrFragment orFragment = new OrFragment();
@@ -460,7 +454,7 @@ public class BytecodeDecoder extends CodeDecoder
 					orFragment.type = "long";
 					out.add(orFragment);
 				}
-				
+
 				else if(ainsnNode.getOpcode() == IXOR)
 				{
 					XorFragment xorFragment = new XorFragment();
@@ -473,19 +467,19 @@ public class BytecodeDecoder extends CodeDecoder
 					xorFragment.type = "long";
 					out.add(xorFragment);
 				}
-				
+
 				else if(ainsnNode.getOpcode() == POP)
 				{
 					PopFragment popFrag = new PopFragment();
 					out.add(popFrag);
 				}
-				
+
 				else if(ainsnNode.getOpcode() == RETURN)
 				{
 					ReturnFragment returnFrag = new ReturnFragment();
 					out.add(returnFrag);
 				}
-				
+
 				else if(ainsnNode.getOpcode() == DUP)
 				{
 					DuplicateFragment duplicate = new DuplicateFragment();
@@ -498,7 +492,7 @@ public class BytecodeDecoder extends CodeDecoder
 					duplicate.wait = 1;
 					out.add(duplicate);
 				}
-				
+
 				else if(ainsnNode.getOpcode() == DCMPG || ainsnNode.getOpcode() == FCMPG)
 				{
 					CompareFragment compareFrag = new CompareFragment();
@@ -507,11 +501,24 @@ public class BytecodeDecoder extends CodeDecoder
 				}
 				else if(ainsnNode.getOpcode() == DCMPL || ainsnNode.getOpcode() == FCMPL)
 				{
-					CompareFragment compareFrag = new CompareFragment();
-					compareFrag.inferior = false;
-					out.add(compareFrag);
+					if(instructions.get(index + 1).getOpcode() == IFEQ)
+					{
+						NotEqualCheckFragment notEqualFrag = new NotEqualCheckFragment();
+						out.add(notEqualFrag);
+					}
+					else if(instructions.get(index + 1).getOpcode() == IFNE)
+					{
+						NotEqualCheckFragment notEqualFrag = new NotEqualCheckFragment();
+						out.add(notEqualFrag);
+					}
+					else
+					{
+						CompareFragment compareFrag = new CompareFragment();
+						compareFrag.inferior = false;
+						out.add(compareFrag);
+					}
 				}
-				
+
 				else if(ainsnNode.getOpcode() == AASTORE || ainsnNode.getOpcode() == IASTORE || ainsnNode.getOpcode() == BASTORE || ainsnNode.getOpcode() == LASTORE || ainsnNode.getOpcode() == SASTORE || ainsnNode.getOpcode() == FASTORE || ainsnNode.getOpcode() == DASTORE || ainsnNode.getOpcode() == CASTORE)
 				{
 					ArrayStoreFragment storeFrag = new ArrayStoreFragment();
@@ -525,7 +532,7 @@ public class BytecodeDecoder extends CodeDecoder
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.LABEL)
 			{
-				LabelNode labelNode = (LabelNode) ainsnNode;
+				LabelNode labelNode = (LabelNode)ainsnNode;
 				currentLabel = labelNode.getLabel();
 				while(!toJump.isEmpty())
 				{
@@ -539,11 +546,11 @@ public class BytecodeDecoder extends CodeDecoder
 								{
 									if(frames > 0)
 									{
-                						EndOfBlockFragment endOfBlockFrag = new EndOfBlockFragment();
-                						out.add(endOfBlockFrag);
-                						frames--;
+										EndOfBlockFragment endOfBlockFrag = new EndOfBlockFragment();
+										out.add(endOfBlockFrag);
+										frames-- ;
 									}
-            						gotos.remove(currentLabel);
+									gotos.remove(currentLabel);
 								}
 							}
 						}
@@ -555,9 +562,9 @@ public class BytecodeDecoder extends CodeDecoder
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.FRAME)
 			{
-				FrameNode frameNode = (FrameNode) ainsnNode;
+				FrameNode frameNode = (FrameNode)ainsnNode;
 				if(framesToSkip > 0)
-					framesToSkip--;
+					framesToSkip-- ;
 				else
 				{
 					if(frames == 0)
@@ -573,16 +580,16 @@ public class BytecodeDecoder extends CodeDecoder
 						{
 							while(ifs.contains(currentLabel))
 							{
-    							nbr++;
-    							ifs.remove(currentLabel);
+								nbr++ ;
+								ifs.remove(currentLabel);
 							}
 						}
 
-						for(int j = 0;j<nbr;j++)
+						for(int j = 0; j < nbr; j++ )
 						{
 							EndOfBlockFragment end = new EndOfBlockFragment();
-    						out.add(end);
-    						frames--;
+							out.add(end);
+							frames-- ;
 						}
 					}
 				}
@@ -590,123 +597,113 @@ public class BytecodeDecoder extends CodeDecoder
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.JUMP_INSN)
 			{
-				JumpInsnNode jumpNode = (JumpInsnNode) ainsnNode;
+				JumpInsnNode jumpNode = (JumpInsnNode)ainsnNode;
 				if(jumpNode.getOpcode() == IFEQ)
 				{
-					if(instructions.get(index-1).getOpcode() == ILOAD 
-						&& instructions.get(index+1).getOpcode() == ILOAD
-						&& instructions.get(index+2).getOpcode() == IFEQ
-						&& instructions.get(index+3).getOpcode() == ICONST_1
-						&& instructions.get(index+4).getOpcode() == GOTO
-						&& instructions.get(index+5).getType() == AbstractInsnNode.LABEL
-						&& instructions.get(index+6).getType() == AbstractInsnNode.FRAME
-						&& instructions.get(index+7).getOpcode() == ICONST_0
-						&& instructions.get(index+8).getType() == AbstractInsnNode.LABEL
-						&& instructions.get(index+9).getType() == AbstractInsnNode.FRAME
-						&& instructions.get(index+10).getOpcode() == ISTORE
-						)
+					if(instructions.get(index - 1).getOpcode() == ILOAD && instructions.get(index + 1).getOpcode() == ILOAD && instructions.get(index + 2).getOpcode() == IFEQ && instructions.get(index + 3).getOpcode() == ICONST_1 && instructions.get(index + 4).getOpcode() == GOTO && instructions.get(index + 5).getType() == AbstractInsnNode.LABEL
+							&& instructions.get(index + 6).getType() == AbstractInsnNode.FRAME && instructions.get(index + 7).getOpcode() == ICONST_0 && instructions.get(index + 8).getType() == AbstractInsnNode.LABEL && instructions.get(index + 9).getType() == AbstractInsnNode.FRAME && instructions.get(index + 10).getOpcode() == ISTORE)
 					{
-						int operand = ((VarInsnNode)instructions.get(index+1)).var;
+						int operand = ((VarInsnNode)instructions.get(index + 1)).var;
 						LoadVariableFragment loadFrag = new LoadVariableFragment();
 						loadFrag.variableName = varNameMap.get(operand);
 						loadFrag.variableIndex = operand;
 						out.add(loadFrag);
-						
+
 						AndFragment andFrag = new AndFragment();
 						andFrag.isDouble = true;
 						out.add(andFrag);
-						
-						int operand1 = ((VarInsnNode)instructions.get(index+10)).var;
+
+						int operand1 = ((VarInsnNode)instructions.get(index + 10)).var;
 						StoreVariableFragment storeFrag = new StoreVariableFragment();
 						storeFrag.variableName = varNameMap.get(operand1);
 						storeFrag.variableIndex = operand1;
 						storeFrag.variableType = "int";
 						out.add(storeFrag);
-						index+=10;
+						index += 10;
 					}
 					else
 					{
-    					IfStatementFragment ifFrag = new IfStatementFragment();
-    					frames++;
-    					ifs.push(jumpNode.label.getLabel());
-    					ifFrag.toJump = jumpNode.label.getLabel().toString();
-    					out.add(ifFrag);
-    					toJump.push(jumpNode.label);
+						IfStatementFragment ifFrag = new IfStatementFragment();
+						frames++ ;
+						ifs.push(jumpNode.label.getLabel());
+						ifFrag.toJump = jumpNode.label.getLabel().toString();
+						out.add(ifFrag);
+						toJump.push(jumpNode.label);
 					}
 				}
-				else if(jumpNode.getOpcode() == IF_ICMPEQ
-						&& instructions.get(index+1).getOpcode() == ICONST_1
-						&& (instructions.get(index+2).getOpcode() == IRETURN || instructions.get(index+2).getOpcode() == ISTORE)
-						&& instructions.get(index+3).getType() == AbstractInsnNode.LABEL
-						&& instructions.get(index+4).getType() == AbstractInsnNode.FRAME
-						&& instructions.get(index+5).getOpcode() == ICONST_0
-						&& (instructions.get(index+6).getOpcode() == IRETURN || instructions.get(index+2).getOpcode() == ISTORE))
+				else if(jumpNode.getOpcode() == IF_ICMPEQ && instructions.get(index + 1).getOpcode() == ICONST_1 && (instructions.get(index + 2).getOpcode() == IRETURN || instructions.get(index + 2).getOpcode() == ISTORE) && instructions.get(index + 3).getType() == AbstractInsnNode.LABEL
+						&& instructions.get(index + 4).getType() == AbstractInsnNode.FRAME && instructions.get(index + 5).getOpcode() == ICONST_0 && (instructions.get(index + 6).getOpcode() == IRETURN || instructions.get(index + 2).getOpcode() == ISTORE))
 				{
 					NotEqualCheckFragment notEqualFrag = new NotEqualCheckFragment();
 					out.add(notEqualFrag);
-					index+=5;
+					index += 5;
 				}
-				else if(jumpNode.getOpcode() == IF_ICMPNE
-						&& instructions.get(index+1).getOpcode() == ICONST_1
-						&& (instructions.get(index+2).getOpcode() == IRETURN || instructions.get(index+2).getOpcode() == ISTORE)
-						&& instructions.get(index+3).getType() == AbstractInsnNode.LABEL
-						&& instructions.get(index+4).getType() == AbstractInsnNode.FRAME
-						&& instructions.get(index+5).getOpcode() == ICONST_0
-						&& (instructions.get(index+6).getOpcode() == IRETURN || instructions.get(index+2).getOpcode() == ISTORE)
-						
-						)
+				else if(jumpNode.getOpcode() == IF_ICMPNE && instructions.get(index + 1).getOpcode() == ICONST_1 && (instructions.get(index + 2).getOpcode() == IRETURN || instructions.get(index + 2).getOpcode() == ISTORE) && instructions.get(index + 3).getType() == AbstractInsnNode.LABEL
+						&& instructions.get(index + 4).getType() == AbstractInsnNode.FRAME && instructions.get(index + 5).getOpcode() == ICONST_0 && (instructions.get(index + 6).getOpcode() == IRETURN || instructions.get(index + 2).getOpcode() == ISTORE)
+
+				)
 				{
 					EqualCheckFragment equalFrag = new EqualCheckFragment();
 					out.add(equalFrag);
-					index+=5;
+					index += 5;
 				}
 				else if(jumpNode.getOpcode() == IFNE)
 				{
-					if(instructions.get(index-1).getOpcode() == ILOAD 
-    					&& instructions.get(index+1).getOpcode() == ILOAD
-    					&& instructions.get(index+2).getOpcode() == IFNE
-    					&& instructions.get(index+3).getOpcode() == ICONST_0
-    					&& instructions.get(index+4).getOpcode() == GOTO
-    					&& instructions.get(index+5).getType() == AbstractInsnNode.LABEL
-    					&& instructions.get(index+6).getType() == AbstractInsnNode.FRAME
-    					&& instructions.get(index+7).getOpcode() == ICONST_1
-    					&& instructions.get(index+8).getType() == AbstractInsnNode.LABEL
-    					&& instructions.get(index+9).getType() == AbstractInsnNode.FRAME
-    					&& instructions.get(index+10).getOpcode() == ISTORE
-					)
+					if(instructions.get(index - 1).getOpcode() == ILOAD && instructions.get(index + 1).getOpcode() == ILOAD && instructions.get(index + 2).getOpcode() == IFNE && instructions.get(index + 3).getOpcode() == ICONST_0 && instructions.get(index + 4).getOpcode() == GOTO && instructions.get(index + 5).getType() == AbstractInsnNode.LABEL
+							&& instructions.get(index + 6).getType() == AbstractInsnNode.FRAME && instructions.get(index + 7).getOpcode() == ICONST_1 && instructions.get(index + 8).getType() == AbstractInsnNode.LABEL && instructions.get(index + 9).getType() == AbstractInsnNode.FRAME && instructions.get(index + 10).getOpcode() == ISTORE)
 					{
-						int operand = ((VarInsnNode)instructions.get(index+1)).var;
+						int operand = ((VarInsnNode)instructions.get(index + 1)).var;
 						LoadVariableFragment loadFrag = new LoadVariableFragment();
 						loadFrag.variableName = varNameMap.get(operand);
 						loadFrag.variableIndex = operand;
 						out.add(loadFrag);
-						
+
 						OrFragment orFrag = new OrFragment();
 						orFrag.isDouble = true;
 						out.add(orFrag);
-						
-						int operand1 = ((VarInsnNode)instructions.get(index+10)).var;
+
+						int operand1 = ((VarInsnNode)instructions.get(index + 10)).var;
 						StoreVariableFragment storeFrag = new StoreVariableFragment();
 						storeFrag.variableName = varNameMap.get(operand1);
 						storeFrag.variableIndex = operand1;
 						storeFrag.variableType = "int";
 						out.add(storeFrag);
-						index+=10;
+						index += 10;
 					}
 					else
 					{
-    					IfNotStatementFragment ifFrag = new IfNotStatementFragment();
-    					frames++;
-    					ifs.push(jumpNode.label.getLabel());
-    					ifFrag.toJump = jumpNode.label.getLabel().toString();
-    					out.add(ifFrag);
-    					toJump.push(jumpNode.label);
+						IfNotStatementFragment ifFrag = new IfNotStatementFragment();
+						frames++ ;
+						ifs.push(jumpNode.label.getLabel());
+						ifFrag.toJump = jumpNode.label.getLabel().toString();
+						out.add(ifFrag);
+						toJump.push(jumpNode.label);
 					}
+				}
+				else if(jumpNode.getOpcode() == IF_ICMPEQ)
+				{
+					out.add(new NotEqualCheckFragment());
+					IfStatementFragment ifFrag = new IfStatementFragment();
+					frames++ ;
+					ifs.push(jumpNode.label.getLabel());
+					ifFrag.toJump = jumpNode.label.getLabel().toString();
+					out.add(ifFrag);
+					toJump.push(jumpNode.label);
+				}
+				else if(jumpNode.getOpcode() == IF_ICMPNE)
+				{
+					out.add(new EqualCheckFragment());
+					IfStatementFragment ifFrag = new IfStatementFragment();
+					frames++ ;
+					ifs.push(jumpNode.label.getLabel());
+					ifFrag.toJump = jumpNode.label.getLabel().toString();
+					out.add(ifFrag);
+					toJump.push(jumpNode.label);
 				}
 				else if(jumpNode.getOpcode() == IFGE)
 				{
 					IfStatementFragment ifFrag = new IfStatementFragment();
-					frames++;
+					frames++ ;
 					ifs.push(jumpNode.label.getLabel());
 					ifFrag.toJump = jumpNode.label.getLabel().toString();
 					out.add(ifFrag);
@@ -715,7 +712,7 @@ public class BytecodeDecoder extends CodeDecoder
 				else if(jumpNode.getOpcode() == IFLE)
 				{
 					IfStatementFragment ifFrag = new IfStatementFragment();
-					frames++;
+					frames++ ;
 					ifs.push(jumpNode.label.getLabel());
 					ifFrag.toJump = jumpNode.label.getLabel().toString();
 					out.add(ifFrag);
@@ -725,33 +722,33 @@ public class BytecodeDecoder extends CodeDecoder
 				{
 					toJump.push(jumpNode.label);
 					gotos.push(jumpNode.label.getLabel());
-					if(instructions.get(index-1) instanceof LineNumberNode && lastFrameType == F_SAME)
+					if(instructions.get(index - 1) instanceof LineNumberNode && lastFrameType == F_SAME)
 					{
 						EndOfBlockFragment end = new EndOfBlockFragment();
-						frames--;
+						frames-- ;
 						out.add(end);
 					}
-					
+
 					EndOfBlockFragment end = new EndOfBlockFragment();
-					frames--;
+					frames-- ;
 					out.add(end);
 
 					ElseStatementFragment elseFrag = new ElseStatementFragment();
-					frames++;
+					frames++ ;
 					out.add(elseFrag);
-					framesToSkip=1;
+					framesToSkip = 1;
 				}
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.LDC_INSN)
 			{
-				LdcInsnNode ldc = (LdcInsnNode) ainsnNode;
+				LdcInsnNode ldc = (LdcInsnNode)ainsnNode;
 				LdcFragment ldcFragment = new LdcFragment();
 				ldcFragment.value = ldc.cst;
 				out.add(ldcFragment);
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.VAR_INSN)
 			{
-				VarInsnNode varNode = (VarInsnNode) ainsnNode;
+				VarInsnNode varNode = (VarInsnNode)ainsnNode;
 				int operand = varNode.var;
 				if(ainsnNode.getOpcode() == ISTORE)
 				{
@@ -793,8 +790,7 @@ public class BytecodeDecoder extends CodeDecoder
 					storeFrag.variableType = varTypeMap.get(operand);
 					out.add(storeFrag);
 				}
-				else if(ainsnNode.getOpcode() == FLOAD || ainsnNode.getOpcode() == LLOAD || ainsnNode.getOpcode() == ILOAD || ainsnNode.getOpcode() == DLOAD
-					|| ainsnNode.getOpcode() == ALOAD)
+				else if(ainsnNode.getOpcode() == FLOAD || ainsnNode.getOpcode() == LLOAD || ainsnNode.getOpcode() == ILOAD || ainsnNode.getOpcode() == DLOAD || ainsnNode.getOpcode() == ALOAD)
 				{
 					LoadVariableFragment loadFrag = new LoadVariableFragment();
 					loadFrag.variableName = varNameMap.get(operand);
@@ -804,7 +800,7 @@ public class BytecodeDecoder extends CodeDecoder
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.FIELD_INSN)
 			{
-				FieldInsnNode fieldNode = (FieldInsnNode) ainsnNode;
+				FieldInsnNode fieldNode = (FieldInsnNode)ainsnNode;
 				if(fieldNode.getOpcode() == PUTFIELD)
 				{
 					PutFieldFragment putFieldFrag = new PutFieldFragment();
@@ -822,7 +818,7 @@ public class BytecodeDecoder extends CodeDecoder
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.INT_INSN)
 			{
-				IntInsnNode intNode = (IntInsnNode) ainsnNode;
+				IntInsnNode intNode = (IntInsnNode)ainsnNode;
 				int operand = intNode.operand;
 				if(intNode.getOpcode() == BIPUSH)
 				{
@@ -845,7 +841,7 @@ public class BytecodeDecoder extends CodeDecoder
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.TYPE_INSN)
 			{
-				TypeInsnNode typeNode = (TypeInsnNode) ainsnNode;
+				TypeInsnNode typeNode = (TypeInsnNode)ainsnNode;
 				String operand = typeNode.desc;
 				if(typeNode.getOpcode() == ANEWARRAY)
 				{
@@ -869,7 +865,7 @@ public class BytecodeDecoder extends CodeDecoder
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.MULTIANEWARRAY_INSN)
 			{
-				MultiANewArrayInsnNode multiArrayNode = (MultiANewArrayInsnNode) ainsnNode;
+				MultiANewArrayInsnNode multiArrayNode = (MultiANewArrayInsnNode)ainsnNode;
 				NewMultiArrayFragment multiFrag = new NewMultiArrayFragment();
 				multiFrag.type = typesFromDesc(multiArrayNode.desc)[0].replace("[]", "");
 				multiFrag.dimensions = multiArrayNode.dims;
@@ -877,14 +873,14 @@ public class BytecodeDecoder extends CodeDecoder
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.LINE)
 			{
-				LineNumberNode lineNode = (LineNumberNode) ainsnNode;
+				LineNumberNode lineNode = (LineNumberNode)ainsnNode;
 				LineNumberFragment lineNumberFragment = new LineNumberFragment();
 				lineNumberFragment.line = lineNode.line;
 				out.add(lineNumberFragment);
 			}
 			else if(ainsnNode.getType() == AbstractInsnNode.METHOD_INSN)
 			{
-				MethodInsnNode methodNode = (MethodInsnNode) ainsnNode;
+				MethodInsnNode methodNode = (MethodInsnNode)ainsnNode;
 				if(methodNode.getOpcode() == INVOKESTATIC)
 				{
 					String desc = methodNode.desc;
@@ -896,7 +892,7 @@ public class BytecodeDecoder extends CodeDecoder
 					methodFragment.methodName = n;
 					methodFragment.methodOwner = methodNode.owner.replace("/", ".");
 					methodFragment.argumentsTypes = margsArray;
-					methodFragment.returnType = typesFromDesc(desc.substring(desc.indexOf(")")+1))[0];
+					methodFragment.returnType = typesFromDesc(desc.substring(desc.indexOf(")") + 1))[0];
 					out.add(methodFragment);
 				}
 				else if(methodNode.getOpcode() == INVOKESPECIAL)
@@ -910,7 +906,7 @@ public class BytecodeDecoder extends CodeDecoder
 					methodFragment.methodName = n;
 					methodFragment.methodOwner = methodNode.owner.replace("/", ".");
 					methodFragment.argumentsTypes = margsArray;
-					methodFragment.returnType = typesFromDesc(desc.substring(desc.indexOf(")")+1))[0];
+					methodFragment.returnType = typesFromDesc(desc.substring(desc.indexOf(")") + 1))[0];
 					out.add(methodFragment);
 					addAnnotFragments(methodNode.owner, n, methodNode.desc, methodFragment);
 				}
@@ -925,7 +921,7 @@ public class BytecodeDecoder extends CodeDecoder
 					methodFragment.methodName = n;
 					methodFragment.methodOwner = methodNode.owner.replace("/", ".");
 					methodFragment.argumentsTypes = margsArray;
-					methodFragment.returnType = typesFromDesc(desc.substring(desc.indexOf(")")+1))[0];
+					methodFragment.returnType = typesFromDesc(desc.substring(desc.indexOf(")") + 1))[0];
 					out.add(methodFragment);
 					addAnnotFragments(methodNode.owner, n, methodNode.desc, methodFragment);
 				}
@@ -941,7 +937,7 @@ public class BytecodeDecoder extends CodeDecoder
 		String currentObjectClass = null;
 		String currentArrayClass = null;
 		int dims = 1;
-		for(int i = startPos; i < desc.length(); i++)
+		for(int i = startPos; i < desc.length(); i++ )
 		{
 			char c = desc.charAt(i);
 
@@ -1010,7 +1006,7 @@ public class BytecodeDecoder extends CodeDecoder
 			{
 				if(c == '[')
 				{
-					dims++;
+					dims++ ;
 					continue;
 				}
 				if(c == '/') c = '.';
@@ -1020,7 +1016,7 @@ public class BytecodeDecoder extends CodeDecoder
 				{
 					parsingArrayClass = false;
 					String dim = "";
-					for(int ii = 0; ii < dims; ii++)
+					for(int ii = 0; ii < dims; ii++ )
 						dim += "[]";
 					types.add(currentArrayClass + dim);
 					dims = 1;
@@ -1036,7 +1032,7 @@ public class BytecodeDecoder extends CodeDecoder
 		if(parsingArrayClass)
 		{
 			String dim = "";
-			for(int ii = 0; ii < dims; ii++)
+			for(int ii = 0; ii < dims; ii++ )
 				dim += "[]";
 			types.add(currentArrayClass + dim);
 		}
@@ -1067,7 +1063,8 @@ public class BytecodeDecoder extends CodeDecoder
 						{
 							fragment.addChild(createFromNode(annot));
 						}
-					else return;
+					else
+						return;
 				}
 			}
 		}
@@ -1076,5 +1073,5 @@ public class BytecodeDecoder extends CodeDecoder
 			e.printStackTrace();
 		}
 	}
-	
+
 }
