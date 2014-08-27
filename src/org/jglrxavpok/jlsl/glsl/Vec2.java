@@ -14,27 +14,26 @@ public class Vec2
 		this.x = x;
 		this.y = y;
 	}
-	
+
 	public double length()
 	{
 		double dx = x;
 		double dy = y;
-		return Math.sqrt(dx*dx+dy*dy);
+		return Math.sqrt(dx * dx + dy * dy);
 	}
 
 	public Vec2 normalize()
 	{
 		double l = length();
-		double x1 = x/l;
-		double y1 = y/l;
-		return new Vec2(x1,y1);
+		double x1 = x / l;
+		double y1 = y / l;
+		return new Vec2(x1, y1);
 	}
 
 	@Substitute(value = "/", usesParenthesis = false, ownerBefore = true)
 	public Vec2 div(double i)
 	{
-		return new Vec2(x/i,y/i);
+		return new Vec2(x / i, y / i);
 	}
-
 
 }

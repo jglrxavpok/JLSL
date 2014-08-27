@@ -18,14 +18,14 @@ public class JLSLContext
 		this.encoder = encoder;
 		this.encoder.context = this;
 	}
-	
+
 	public void requestAnalysisForEncoder(Object data)
 	{
 		ArrayList<CodeFragment> fragments = new ArrayList<CodeFragment>();
 		decoder.handleClass(data, fragments);
 		encoder.onRequestResult(fragments);
 	}
-	
+
 	public void execute(Object data, PrintWriter out)
 	{
 		ArrayList<CodeFragment> fragments = new ArrayList<CodeFragment>();

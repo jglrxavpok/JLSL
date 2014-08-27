@@ -6,6 +6,6 @@ import org.jglrxavpok.jlsl.fragments.*;
 
 public class StructFragment extends CodeFragment
 {
-	public String name;
+	public String				  name;
 	public HashMap<String, String> fields;
 }

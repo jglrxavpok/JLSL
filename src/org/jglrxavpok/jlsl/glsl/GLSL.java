@@ -41,22 +41,22 @@ public class GLSL
 	public @interface Out
 	{
 	}
-	
+
 	@Retention(RetentionPolicy.RUNTIME)
 	public @interface SwizzlingMethod // TODO
 	{
 	}
-	
+
 	@Retention(RetentionPolicy.RUNTIME)
 	public @interface Substitute
 	{
 		String value();
 
 		boolean usesParenthesis() default true;
-		
+
 		boolean ownerBefore() default false;
 
-		int ownerPosition()  default 0;
+		int ownerPosition() default 0;
 
 		boolean actsAsField() default false;
 	}
