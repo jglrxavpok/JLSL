@@ -778,7 +778,10 @@ public class GLSLEncoder extends CodeEncoder
 			{
 				if(actsAsField)
 				{
-					s = (owner != null ? owner : "") + "." + n;
+					if(n.length() >= 1)
+						s = (owner != null ? owner : "") + "." + n;
+					else
+						s = (owner != null ? owner : "");
 					if(argsStr.length() > 0)
 					{
 						s += " = " + argsStr;
@@ -800,7 +803,7 @@ public class GLSLEncoder extends CodeEncoder
 		{
 			String ownership = "";
 			String owner = toGLSL(fragment.methodOwner);
-			if(owner != null && !owner.trim().equals("") && !owner.equals("null")) ownership = owner + ".";
+			if(owner != null && !owner.trim().equals("") && !owner.equals("null")) ownership = owner + (n.length() > 0 ? "." : "");
 			stack.push(ownership + n + (parenthesis ? "(" : "") + argsStr + (parenthesis ? ")" : ""));
 		}
 		else
