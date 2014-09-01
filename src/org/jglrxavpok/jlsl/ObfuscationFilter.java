@@ -64,6 +64,7 @@ public class ObfuscationFilter implements CodeFilter
 			s = (char)('a' + (nbr1 % 26)) + s;
 		}
 		nbr++ ;
+		System.out.println("created name " + s + last);
 		return s + last;
 	}
 
