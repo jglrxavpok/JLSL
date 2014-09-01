@@ -1,5 +1,6 @@
 package org.jglrxavpok.jlsl.glsl;
 
+import org.jglrxavpok.jlsl.ObfuscationFilter.NonObfuscable;
 import org.jglrxavpok.jlsl.glsl.GLSL.Extensions;
 import org.jglrxavpok.jlsl.glsl.GLSL.Uniform;
 
@@ -28,6 +29,7 @@ public class TestShader extends FragmentShader
 	public final double	 PI	  = 3.141592653589793;
 
 	@Override
+	@NonObfuscable
 	public void main()
 	{
 		Vec4 v = new Vec4(gl_FragCoord.x / screenSize.x, gl_FragCoord.y / screenSize.y, vertex.test(1), vertex1.test(1));
@@ -57,6 +59,7 @@ public class TestShader extends FragmentShader
 		charTest += 10;
 		normalizer(v, charTest);
 		normalizer(v, charTest);
+		main();
 	}
 
 	private void vignette()

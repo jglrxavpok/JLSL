@@ -153,6 +153,7 @@ public class BytecodeDecoder extends CodeDecoder
 					startOfMethodFragment.addChild(createFromNode(annotNode));
 				}
 				out.add(startOfMethodFragment);
+				addAnnotFragments(startOfMethodFragment.owner, node.name, node.desc, startOfMethodFragment);
 				handleMethodNode(node, startOfMethodFragment.varTypeMap, startOfMethodFragment.varNameMap, out);
 				EndOfMethodFragment endOfMethodFragment = new EndOfMethodFragment();
 				endOfMethodFragment.access = startOfMethodFragment.access;
@@ -165,6 +166,7 @@ public class BytecodeDecoder extends CodeDecoder
 				endOfMethodFragment.varTypeMap = startOfMethodFragment.varTypeMap;
 				endOfMethodFragment.varName2TypeMap = startOfMethodFragment.varName2TypeMap;
 				endOfMethodFragment.getChildren().addAll(startOfMethodFragment.getChildren());
+				addAnnotFragments(endOfMethodFragment.owner, node.name, node.desc, endOfMethodFragment);
 				out.add(endOfMethodFragment);
 			}
 			return;
@@ -894,6 +896,7 @@ public class BytecodeDecoder extends CodeDecoder
 					methodFragment.argumentsTypes = margsArray;
 					methodFragment.returnType = typesFromDesc(desc.substring(desc.indexOf(")") + 1))[0];
 					out.add(methodFragment);
+					addAnnotFragments(methodNode.owner, n, methodNode.desc, methodFragment);
 				}
 				else if(methodNode.getOpcode() == INVOKESPECIAL)
 				{
@@ -1045,7 +1048,7 @@ public class BytecodeDecoder extends CodeDecoder
 	}
 
 	@SuppressWarnings("unchecked")
-	private static void addAnnotFragments(String methodClass, String methodName, String methodDesc, MethodCallFragment fragment)
+	private static void addAnnotFragments(String methodClass, String methodName, String methodDesc, CodeFragment fragment)
 	{
 		try
 		{
@@ -1062,6 +1065,7 @@ public class BytecodeDecoder extends CodeDecoder
 						for(AnnotationNode annot : annots)
 						{
 							fragment.addChild(createFromNode(annot));
+							System.out.println(annot.desc);
 						}
 					else
 						return;
